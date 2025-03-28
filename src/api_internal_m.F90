@@ -97,7 +97,7 @@ contains
             end if
 
             if (suffix /= '') then
-               suf_idx = index(string, suffix, back=.true.)
+               suf_idx = index(str, suffix, back=.true.)
                if (suf_idx == 0) return
             end if
 
