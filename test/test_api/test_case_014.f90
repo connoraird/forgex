@@ -159,6 +159,9 @@ program test_case_014
    call runner_match("[\xaf]", 'x', .false., res)
    call runner_match("[\xaf]", 'f', .false., res)
 
+   call runner_match("[\x{30}-\x39]", '0', .true., res)
+   call runner_match("[\x{30}-\x39a]", 'a', .true., res)
+   call runner_match("[\x{30}b-\x39b]", 'b', .false., res)
    if (res) then
       write(error_unit, *) '=== TEST CASE 14 END ==='
       stop
