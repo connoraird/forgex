@@ -33,6 +33,7 @@ module forgex_error_m
       enumerator :: SYNTAX_ERR_HEX_DIGITS_NOT_ENOUGH ! 20
       enumerator :: SYNTAX_ERR_UNICODE_EXCEED
       enumerator :: SYNTAX_ERR_UNICODE_PROPERTY_NOT_IMPLEMENTED
+      enumerator :: SYNTAX_ERR_EMPTY_PROPERTY
       enumerator :: SYNTAX_ERR_THIS_SHOULD_NOT_HAPPEN
       enumerator :: ALLOCATION_ERR
    end enum
