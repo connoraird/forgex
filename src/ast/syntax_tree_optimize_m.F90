@@ -216,6 +216,8 @@ contains
                if (lit_l%flag_closure) exit
             end do
 
+            if (curr%min_repeat /= curr%max_repeat) lit%all%c = ''
+
             lit%flag_closure = curr%min_repeat /= curr%max_repeat
             lit%flag_closure = lit%flag_closure .or. lit_l%flag_closure
          end block
