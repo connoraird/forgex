@@ -65,6 +65,10 @@ contains
 
       if (min_cp > max_cp) return
       if (min_cp > BMP_SIZE_BIT) return
+      if (min_cp == max_cp) then
+         call bmp__add_character_codepoint(self, min_cp)
+         return
+      end if
 
       ib = min_cp / bits_64
       ie = min( max_cp/bits_64, size(self%b, dim=1))
