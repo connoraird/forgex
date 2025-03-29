@@ -8,7 +8,6 @@ module forgex_cube_m
    use :: forgex_segment_m, only: segment_t
    implicit none
 
-   integer :: q
 
    type, public :: cube_t
       type(bmp_t) :: bmp         ! for U+0000 .. U+FFFF BMP
@@ -18,6 +17,7 @@ module forgex_cube_m
       procedure :: add => cube_add__segment, cube_add__segment_list
    end type cube_t
 
+   integer :: q
    type(bmp_t), parameter :: white_bmp = bmp_t([(0_int64, q=0, BMP_SIZE-1)])
 
 contains
@@ -149,7 +149,7 @@ contains
       allocate(ret(siz))
 
       k = 0 ! for tmp
-      j = 0 ! for segments to add
+      j = 1 ! for segments to add
       do while ( j <= n)
          cp_min = seglist(j)%min
          cp_max = seglist(j)%max
@@ -167,6 +167,8 @@ contains
 
       merge: block
          if (allocated(self%sps)) then
+            i = 1
+            j = 1
             k = 0
             do while (i <= m .and. j <= n)
                k = k + 1

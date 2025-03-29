@@ -71,7 +71,7 @@ contains
       end if
 
       ib = min_cp / bits_64
-      ie = min( max_cp/bits_64, size(self%b, dim=1))
+      ie = min( max_cp/bits_64, BMP_SIZE-1)
 
       pb = mod(min_cp, bits_64)
       if (max_cp > BMP_SIZE_BIT) then
