@@ -118,6 +118,7 @@ contains
       self%sps = [SEG_INIT]
    end subroutine cube__erase
 
+
    pure subroutine cube_add__segment(self, segment)
       implicit none
       class(cube_t), intent(inout) :: self
@@ -192,7 +193,7 @@ contains
    pure subroutine cube_add__segment_list(self, seglist)
       implicit none
       class(cube_t), intent(inout) :: self
-      type(segment_t), intent(in), allocatable :: seglist(:)
+      type(segment_t), intent(in) :: seglist(:)
 
       integer :: cp_min, cp_max, siz, i, j, k, m, n
 
