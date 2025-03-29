@@ -200,6 +200,7 @@ contains
       use :: forgex_segment_m, only: operator(.in.), operator(/=)
       use :: forgex_nfa_node_m, only: nfa_state_node_t, nfa_transition_t
       use :: forgex_lazy_dfa_node_m, only: dfa_transition_t
+      use :: forgex_cube_m, only: cube_t, operator(.in.)
       implicit none
       class(automaton_t), intent(in) :: self
       integer(int32),     intent(in) :: curr_i      ! current index of dfa
@@ -213,7 +214,7 @@ contains
       type(nfa_state_node_t)       :: n_node       ! This variable simulates a pointer.
       type(segment_t), allocatable :: segs(:)
       type(nfa_transition_t)       :: n_tra
-
+      type(cube_t) :: cube
 
       call init_state_set(state_set, self%nfa%nfa_top)
 
@@ -247,13 +248,19 @@ contains
                      ! Note the implicit reallocation.
                      segs = n_tra%c
 
+                     call cube%add(n_tra%c)
+
                      ! If the symbol is in the segment list `segs` or if the segment is epsilon,
-                     if ( symbol_to_segment(symbol) .in. segs) then
+                     ! if ( symbol_to_segment(symbol) .in. segs) then
+                     if (symbol .in. cube) then
 
                         ! Add the index of the NFA state node to `state_set` of type(nfa_state_set_t).
                         call add_nfa_state(state_set, n_node%forward(j)%dst)
 
                      end if
+                     
+                     ! Forgut all information in cube.
+                     call cube%erase()
 
                   end do inner
 

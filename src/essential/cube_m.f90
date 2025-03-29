@@ -2,25 +2,78 @@
 #define pure
 #endif
 module forgex_cube_m
-   use, intrinsic :: iso_fortran_env, only: int64
-   use :: forgex_parameters_m, only: BMP_SIZE, BMP_SIZE_BIT
+   use, intrinsic :: iso_fortran_env, only: int64, int32
+   use :: forgex_parameters_m, only: BMP_SIZE, BMP_SIZE_BIT, bits_64
    use :: forgex_bitmap_m, only: bmp_t
-   use :: forgex_segment_m, only: segment_t
+   use :: forgex_segment_m, only: segment_t, symbol_to_segment, operator(.in.), SEG_INIT
+   use :: forgex_utf8_m, only: ichar_utf8
    implicit none
+   private
 
 
    type, public :: cube_t
       type(bmp_t) :: bmp         ! for U+0000 .. U+FFFF BMP
       type(segment_t), allocatable :: sps(:) ! for U+10000 .. U+10FFFF SPs (SIP, SMP, etc.)
    contains
-      procedure :: init =>  cube_init__from_bmp,  cube_init__from_segment, cube_init__from_segment_list
-      procedure :: add => cube_add__segment, cube_add__segment_list
+      procedure :: cube_init__from_bmp
+      procedure :: cube_init__from_segment
+      procedure :: cube_init__from_segment_list
+      procedure :: cube_add__segment
+      procedure :: cube_add__segment_list
+      procedure :: cube__erase
+      generic :: erase => cube__erase
+      generic :: init => cube_init__from_bmp, cube_init__from_segment_list
+      generic :: add => cube_add__segment, cube_add__segment_list
    end type cube_t
 
+   interface operator(.in.)
+      module procedure :: cube_t__symbol_in_cube
+   end interface
+
+   public :: operator(.in.)
+
    integer :: q
-   type(bmp_t), parameter :: white_bmp = bmp_t([(0_int64, q=0, BMP_SIZE-1)])
+   type(bmp_t), parameter, public :: white_bmp = bmp_t([(0_int64, q=0, BMP_SIZE-1)])
 
 contains
+
+   
+   pure function cube_t__symbol_in_cube (symbol, cube) result(ret)
+      implicit none
+      character(*), intent(in) :: symbol
+      type(cube_t(*)), intent(in) :: cube
+      logical :: ret
+
+      integer :: cp
+
+      cp = ichar_utf8(symbol)
+
+      if (cp <= BMP_SIZE_BIT) then
+         ret = iand(cube%bmp%b(cp/bits_64), ishft(1_int64, mod(cp, bits_64))) /= 0_int64
+      else
+         ret = symbol_to_segment(symbol) .in. cube%sps(:)
+      end if
+
+   end function cube_t__symbol_in_cube
+   
+
+   pure function cube_t__codepoint_in_cube (cp, cube) result(ret)
+      implicit none
+      integer(int32), intent(in) :: cp
+      type(cube_t(*)), intent(in) :: cube
+      logical :: ret
+
+
+      if (cp <= BMP_SIZE_BIT) then
+         ret = iand(cube%bmp%b(cp/bits_64), ishft(1_int64, mod(cp, bits_64))) /= 0_int64
+      else
+         ret = cp .in. cube%sps(:)
+      end if
+
+   end function cube_t__codepoint_in_cube
+
+!=====================================================================!
+
 
    pure subroutine cube_init__from_bmp(self, bmp)
       implicit none
@@ -54,6 +107,16 @@ contains
       
 
    end subroutine cube_init__from_segment
+
+
+   pure subroutine cube__erase(self)
+      implicit none
+      class(cube_t), intent(inout) :: self
+
+      self%bmp = white_bmp
+      if (allocated(self%sps)) deallocate(self%sps)
+      self%sps = [SEG_INIT]
+   end subroutine cube__erase
 
    pure subroutine cube_add__segment(self, segment)
       implicit none
@@ -119,7 +182,7 @@ contains
             tmp(j) = segment_t(max(cp_min, BMP_SIZE_BIT), cp_max)
          end if
       enddo
-      
+      if (allocated(self%sps)) deallocate(self%sps)
       allocate(self%sps(j))
       self%sps(1:j) = tmp(1:j)
 
@@ -129,21 +192,21 @@ contains
    pure subroutine cube_add__segment_list(self, seglist)
       implicit none
       class(cube_t), intent(inout) :: self
-      type(segment_t), intent(in) :: seglist(:)
+      type(segment_t), intent(in), allocatable :: seglist(:)
 
       integer :: cp_min, cp_max, siz, i, j, k, m, n
 
       type(segment_t), allocatable :: tmp(:), ret(:)
       type(segment_t) :: what_to_add
       
-      if (.not. allocated(self%sps)) then
+      if (allocated(self%sps)) then
          m = size(self%sps)
       else
          m = 0
       end if 
       n = size(seglist, dim=1)
 
-      siz = m + n      
+      siz = m + n
 
       allocate(tmp(n))
       allocate(ret(siz))
@@ -169,23 +232,22 @@ contains
          if (allocated(self%sps)) then
             i = 1
             j = 1
-            k = 0
+            k = 1
             do while (i <= m .and. j <= n)
-               k = k + 1
                if (self%sps(i)%min < tmp(i)%min) then
                   ret(k) = self%sps(i)
-                  i = i + 1
+                  i = i + 1; k = k + 1
                else
                   ret(k) = tmp(j)
-                  j = j + 1
+                  j = j + 1; k = k + 1
                end if
             end do
-
-            do while (i <= m)
+            if (k==0) k = 1
+            do while (i <= m .and. k <=siz)
                ret(k) = self%sps(i)
                i = i + 1; k = k + 1
             end do
-            do while (j <= n)
+            do while (j <= n .and. k <= siz)
                ret(k) = tmp(j)
                j = j + 1; k = k + 1
             end do
@@ -193,8 +255,8 @@ contains
       end block merge
 
       if (allocated(self%sps)) deallocate(self%sps)
-      allocate(self%sps(k))
-      self%sps(:) = ret(1:k)
+      allocate(self%sps(k-1))
+      self%sps(:) = ret(1:k-1)
       
    end subroutine cube_add__segment_list
 

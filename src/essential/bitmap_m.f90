@@ -13,7 +13,8 @@ module forgex_bitmap_m
          ! NOTE: 0-based index. 
          ! 65536 bits for Basic Multilingual Plane
    contains
-      procedure :: add => bmp__add_character_range, bmp__add_character_char, bmp__add_character_codepoint
+      procedure :: bmp__add_character_range, bmp__add_character_char, bmp__add_character_codepoint
+      generic :: add => bmp__add_character_range, bmp__add_character_char, bmp__add_character_codepoint
    end type bmp_t
 
 contains
@@ -92,7 +93,7 @@ contains
 
          ! The integers between have all bits set to 1.
          do i = ib +1, ie -1
-            self%b(i) = not(0_int64)
+            self%b(i) = -1_int64
          end do
 
          ! Last integer: set bits from 0 to pe.
