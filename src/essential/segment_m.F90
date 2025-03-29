@@ -31,6 +31,7 @@ module forgex_segment_m
    public :: hex2seg
 
 
+
    !> This derived-type represents a contiguous range of the Unicode character set
    !> as a `min` and `max` value, providing an effective way to represent ranges of characters
    !> when building automata where a range characters share the same transition destination.

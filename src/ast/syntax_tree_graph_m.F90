@@ -16,6 +16,7 @@ module forgex_syntax_tree_graph_m
    use :: forgex_syntax_tree_node_m, &
       only: tree_node_t, tape_t, terminal, make_atom, make_tree_node, make_repeat_node
    use :: forgex_error_m
+   use :: forgex_unicode_gc_m
    implicit none
    private
 
@@ -46,6 +47,7 @@ module forgex_syntax_tree_graph_m
       procedure :: crlf => tree_graph__make_tree_crlf
       procedure :: shorthand => tree_graph__shorthand
       procedure :: hex2seg => tree_graph__hexadecimal_to_segment
+      procedure :: property => tree_graph__unicode_property
       procedure :: times => tree_graph__times
       procedure :: print => print_tree_wrap
    end type
@@ -683,6 +685,10 @@ contains
          if (.not. self%is_valid) return
          ! It is not necessary to call self%tape%get_token() procedure.
 
+      case (ESCAPE_P)
+         call self%property(seglist)
+         if (.not. self%is_valid) return
+
       case (EMPTY_CHAR)
          self%code = SYNTAX_ERR_ESCAPED_SYMBOL_MISSING
          self%is_valid = .false.
@@ -775,6 +781,51 @@ contains
 
 
    end subroutine tree_graph__hexadecimal_to_segment
+
+
+   pure subroutine tree_graph__unicode_property(self, seglist)
+      implicit none
+      class(tree_t), intent(inout) :: self
+      type(segment_t), intent(inout), allocatable :: seglist(:)
+
+      character(:), allocatable :: property
+      integer :: i
+      logical :: is_single_prop, is_longer_prop
+
+      self%code = SYNTAX_ERR_UNICODE_PROPERTY_NOT_IMPLEMENTED
+      return
+      
+      property = ''
+
+      call self%tape%get_token()
+
+      is_longer_prop = self%tape%current_token == tk_lcurlybrace
+      is_single_prop = .not. is_longer_prop
+
+      if (is_longer_prop) call self%tape%get_token()
+
+      property = self%tape%token_char(1:1)
+      
+      if (is_longer_prop) then
+         i = 2
+         reader: do while (.true.)
+            call self%tape%get_token()
+
+            if (self%tape%current_token /= tk_rcurlybrace .and.  self%tape%current_token /= tk_char) then
+               self%is_valid = .false.
+               self%code = SYNTAX_ERR_CURLYBRACE_MISSING
+               return
+            end if
+
+            if (self%tape%current_token == tk_rcurlybrace) exit
+            property = property//self%tape%token_char(1:1)
+            i = i + 1
+         end do reader
+      end if
+
+      ! call prop2seg(property, seglist, self%code)
+
+   end subroutine tree_graph__unicode_property 
 
 
    !> This subroutine handles a quantifier range, and
