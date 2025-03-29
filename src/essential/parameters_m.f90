@@ -10,6 +10,10 @@ module forgex_parameters_m
    use, intrinsic :: iso_fortran_env, only: int32
    implicit none
 
+   integer(int32), parameter :: bits_64 = 64
+   integer(int32), parameter :: BMP_SIZE_BIT = 65536
+   integer(int32), parameter :: BMP_SIZE = BMP_SIZE_BIT / bits_64 ! BMP (U+0000 .. U+FFFF)
+
    !> This constant defines the unit for adding nodes in the abstract syntax tree (AST).
    !> If it's too large it will cause a stack overflow.
    integer(int32), parameter :: TREE_NODE_UNIT = 32
