@@ -134,7 +134,7 @@ contains
       type(nfa_state_set_t), intent(inout) :: state_set
       integer, intent(in) :: idx
 
-      integer :: j
+      integer :: j, dst
 
       call add_nfa_state(state_set, idx)
 
@@ -142,13 +142,15 @@ contains
 
       do j = 1, self%graph(idx)%forward_top
 
-         if (self%graph(idx)%forward(j)%dst == NFA_NULL_TRANSITION) cycle
+         dst = self%graph(idx)%forward(j)%dst
+
+         if (dst == NFA_NULL_TRANSITION) cycle
 
          if (self%graph(idx)%forward(j)%c%is_flaged_epsilon() .and. &
-            .not. check_nfa_state(state_set, self%graph(idx)%forward(j)%dst)) then
+            .not. check_nfa_state(state_set, dst)) then
 
-            if (self%graph(idx)%forward(j)%dst /= NFA_NULL_TRANSITION) then
-                call self%mark_epsilon_transition(state_set, self%graph(idx)%forward(j)%dst)
+            if (dst /= NFA_NULL_TRANSITION) then
+                call self%mark_epsilon_transition(state_set, dst)
             end if
             
          end if

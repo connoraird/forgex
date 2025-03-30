@@ -144,9 +144,11 @@ contains
          ! 一時変数にコピー
          ! n_tra = self%nfa%graph(n_index)%forward(j)
 
-         if (.not. allocated(self%nfa%graph(n_index)%forward(j)%c%sps)) cycle
+         ! if (.not. allocated(self%nfa%graph(n_index)%forward(j)%c%sps)) cycle
 
          dst = self%nfa%graph(n_index)%forward(j)%dst
+
+         if (dst == NFA_NULL_TRANSITION) cycle
 
          ! if (any(self%nfa%graph(n_index)%forward(j)%c%sps == SEG_EPSILON) &
          if (self%nfa%graph(n_index)%forward(j)%c%is_flaged_epsilon() &
@@ -258,8 +260,8 @@ contains
                      ! Copy to a temporary variable fo type(segment_t).
                      ! Note the implicit reallocation.
 
-                     ! If the symbol is in the segment list `segs` or if the segment is epsilon,
-                     if ((symbol .in. self%nfa%graph(i)%forward(j)%c) .or. self%nfa%graph(i)%forward(j)%c%is_flaged_epsilon()) then
+                     ! If the symbol is in the cube on the transition forward(j).
+                     if (symbol .in. self%nfa%graph(i)%forward(j)%c) then
       
                         ! Add the index of the NFA state node to `state_set` of type(nfa_state_set_t).
                         call add_nfa_state(state_set, self%nfa%graph(i)%forward(j)%dst)
