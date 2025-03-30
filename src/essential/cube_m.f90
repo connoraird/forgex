@@ -21,6 +21,8 @@ module forgex_cube_m
       procedure :: cube_add__segment
       procedure :: cube_add__segment_list
       procedure :: cube__erase
+      procedure :: free => cube__free
+      procedure :: cube2seg => cube__bmp2seg
       generic :: erase => cube__erase
       generic :: init => cube_init__from_bmp, cube_init__from_segment_list
       generic :: add => cube_add__segment, cube_add__segment_list
@@ -261,6 +263,42 @@ contains
       
    end subroutine cube_add__segment_list
 
+
+   pure subroutine cube__free(self)
+      implicit none
+      class(cube_t), intent(inout) :: self
+
+      if (allocated(self%sps)) deallocate(self%sps)
+   end subroutine cube__free
+
+   pure subroutine cube__bmp2seg(self, segments)
+      implicit none
+      class(cube_t), intent(in) :: self
+      type(segment_t), allocatable, intent(inout) :: segments(:)
+
+      type(segment_t), allocatable :: tmp(:)
+
+      integer :: m, n
+      
+      if (allocated(segments)) deallocate(segments)
+
+      call self%bmp%bmp2seg(tmp)
+      m = size(tmp, dim=1)
+      
+      if (allocated(self%sps)) then
+         n = size(self%sps, dim=1)
+      else 
+         n = 0
+      end if
+
+      allocate(segments(m+n))
+
+      segments(1:m) = tmp(1:m)
+
+      if (n > 0) segments(m+1:m+n-1) = self%sps(1:n)
+
+
+   end subroutine cube__bmp2seg
 
 
 end module forgex_cube_m

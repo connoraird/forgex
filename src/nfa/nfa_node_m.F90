@@ -15,8 +15,7 @@
 #endif
 module forgex_nfa_node_m
    use, intrinsic :: iso_fortran_env, only: stderr=>error_unit, int32
-   use :: forgex_parameters_m, only: TREE_NODE_BASE, TREE_NODE_LIMIT, ALLOC_COUNT_INITTIAL, &
-      NFA_NULL_TRANSITION, NFA_TRANSITION_UNIT, NFA_STATE_BASE, NFA_STATE_UNIT
+   use :: forgex_parameters_m, only: NFA_NULL_TRANSITION, ALLOC_COUNT_INITTIAL, NFA_TRANSITION_UNIT
    use :: forgex_syntax_tree_graph_m, only: tree_t
    use :: forgex_segment_m, only: segment_t, SEG_EPSILON, operator(/=)
    use :: forgex_cube_m, only: cube_t
@@ -39,19 +38,10 @@ module forgex_nfa_node_m
    contains
       procedure :: add_transition => nfa__add_transition
       procedure :: realloc_forward => nfa__reallocate_transition_forward
-      ! procedure :: merge_segment
+      procedure :: free => nfa__deallocate
+      procedure :: merge_segment => nfa__merge_segments_of_transition
    end type nfa_state_node_t
 
-   type, public :: nfa_graph_t
-      type(nfa_state_node_t), allocatable :: graph(:)
-      integer(int32) :: top = 0
-      integer(int32) :: entry = 0
-      integer(int32) :: exit = 0
-   contains
-      procedure :: new_nfa_node => nfa_graph__new_node
-      procedure :: is_exceeded => nfa_graph__is_exceeded
-      procedure :: reallocate => nfa_graph__reallocate
-   end type nfa_graph_t
 
 contains
 
@@ -126,214 +116,35 @@ contains
    end subroutine nfa__reallocate_transition_forward
 
 
-!=====================================================================!
-   pure subroutine nfa_graph__new_node(self)
+   pure subroutine nfa__deallocate(self)
       implicit none
-      class(nfa_graph_t), intent(inout) :: self
-
-      self%top = self%top + 1
-   end subroutine nfa_graph__new_node
-
-
-   pure function nfa_graph__is_exceeded(self) result(ret)
-      implicit none
-      class(nfa_graph_t), intent(in) :: self
-      logical :: ret
-
-      ret = ubound(self%graph, dim=1) < self%top
-
-   end function nfa_graph__is_exceeded
-
-
-   pure subroutine nfa_graph__reallocate(self)
-      implicit none
-      class(nfa_graph_t), intent(inout) :: self
-      type(nfa_state_node_t), allocatable :: tmp(:)
-      integer :: n
-
-      n = ubound(self%graph, dim=1)
-      call move_alloc(self%graph, tmp)
-
-      allocate(self%graph(NFA_STATE_BASE:n*2))
-      
-      self%graph(NFA_STATE_BASE:n) = tmp(NFA_STATE_BASE:n)
-
-      self%graph(n+1:n*2)%forward_top = 1
-   end subroutine nfa_graph__reallocate
-
-!=====================================================================!
-
-   pure subroutine build_nfa_graph(tree, nfa, nfa_entry, nfa_exit, entire)
-      implicit none
-      type(tree_t), intent(in) :: tree
-      type(nfa_graph_t), intent(inout) :: nfa
-      integer(int32), intent(inout) :: nfa_entry, nfa_exit
-      type(cube_t), intent(inout) :: entire
-
-      integer(int32) :: i, ib, ie ! index for states array
-
-      ib = NFA_STATE_BASE
-      ie = NFA_STATE_UNIT
-
-      ! initialize
-      nfa%top = 0
-      allocate(nfa%graph(ib:ie))
-      nfa%graph(ib:ie)%own_i = [(i, i=ib, ie)]
-      nfa%graph(:)%alloc_count_f = 0
-      nfa%graph(:)%forward_top = 1
-
-      call nfa%new_nfa_node()
-      nfa%entry = nfa%top
-      call nfa%new_nfa_node()
-      nfa%exit = nfa%top
-
-
-      call generate_nfa(tree, tree%top, nfa, nfa%entry, nfa%exit)
-
-      ! do i = 1, nfa%top
-      !    call nfa%graph(i)%merge_segments()
-      ! end do
-
-      ! call disjoin_nfa()
-
-   end subroutine build_nfa_graph
-
-
-   pure recursive subroutine generate_nfa(tree, idx, nfa, entry_i, exit_i)
-      use :: forgex_enums_m, only: op_char, op_empty, op_closure, op_concat, op_repeat
-      use :: forgex_parameters_m, only: INFINITE, INVALID_INDEX
-      implicit none
-      type(tree_t), intent(in) :: tree
-      integer(int32), intent(in) :: idx
-      type(nfa_graph_t), intent(inout) :: nfa
-      integer(int32), intent(in) :: entry_i, exit_i
+      class(nfa_state_node_t), intent(inout) :: self
 
       integer :: i
-      integer :: k
-      integer :: node1, node2, entry_local
 
-      if (idx == INVALID_INDEX) return
-
-      select case(tree%nodes(i)%op)
-      case (op_char)
-         if (.not. allocated(tree%nodes(i)%c)) then
-            error stop "ERROR: Character node of the AST do not have actual character list."
-         end if
-         ! Handle character operations by adding transition for each character.
-         call nfa%graph(entry_i)%add_transition(entry_i, exit_i, tree%nodes(i)%c)
-      
-      case (op_empty)
-         ! Handle empty opration by adding an epsilon transition
-         call nfa%graph(entry_i)%add_transition(entry_i, exit_i, [SEG_EPSILON])
-      
-      case (op_closure)
-         ! Handle closure (Kleene star) operations by creating new node and adding appropriate transition
-         call generate_nfa_closure(tree, idx, nfa, entry_i, exit_i)
-      
-      case (op_concat)
-         ! Handle concatenation operations by recursively generating NFA for left and right subtrees.
-         call generate_nfa_concatenate(tree, idx, nfa, entry_i, exit_i)
-      
-      case (op_repeat)
-         block
-            integer(int32) :: min_repeat, max_repeat, j
-            integer(int32) :: num_1st_repeat, num_2nd_repeat
-            min_repeat = tree%nodes(i)%min_repeat
-            max_repeat = tree%nodes(i)%max_repeat
-
-            num_1st_repeat = min_repeat-1
-            if (max_repeat == INFINITE) then
-               num_1st_repeat = num_1st_repeat +1
-            end if
-
-            do j = 1, num_1st_repeat
-               call nfa%new_nfa_node()
-
-               if (nfa%is_exceeded()) call nfa%reallocate()
-
-               node1 = nfa%top
-               call generate_nfa(tree, tree%nodes(i)%left_i, nfa, entry_local, node1)
-               entry_local = node1
-            end do
-
-            if (min_repeat == 0) then
-               num_2nd_repeat = max_repeat - 1
-            else
-               num_2nd_repeat = max_repeat - min_repeat
-            end if
-
-            do j = 1, num_2nd_repeat
-               call nfa%new_nfa_node()
-               if (nfa%is_exceeded()) call nfa%reallocate()
-               node2 = nfa%top
-
-               call generate_nfa(tree, tree%nodes(i)%left_i, nfa, entry_local, node2)
-               call nfa%graph(node2)%add_transition(node2, exit_i, [SEG_EPSILON])
-               entry_local = node2
-            end do
-            
-
-            if (min_repeat == 0) then
-               call nfa%graph(entry_i)%add_transition(entry_i, exit_i, [SEG_EPSILON])
-            end if
-
-            if (max_repeat == INFINITE) then
-               call generate_nfa_closure(tree, idx, nfa, entry_local, exit_i)
-            else
-               call generate_nfa(tree, tree%nodes(i)%left_i, nfa, entry_local, exit_i)
-            end if
-
-         end block
-      case default ! for case (op_not_init)
-         ! Handle unexpected cases.
-         error stop "This will not heppen in 'generate_nfa'."
-      end select
-   end subroutine generate_nfa
+      do i = 1, size(self%forward, dim=1) 
+         call self%forward(i)%c%free
+      end do
+      if (allocated(self%forward)) deallocate(self%forward)
+   end subroutine nfa__deallocate
 
 
-   pure recursive subroutine generate_nfa_concatenate(tree, idx, nfa, entry_i, exit_i)
+   pure elemental subroutine nfa__merge_segments_of_transition(self)
+      use :: forgex_segment_m, only:seg__merge_segments=>merge_segments, seg__sort_segments=>sort_segment_by_min
       implicit none
-      type(tree_t), intent(in) :: tree
-      type(nfa_graph_t), intent(inout) :: nfa
-      integer(int32), intent(in) :: idx
-      integer(int32), intent(in) :: entry_i, exit_i
+      class(nfa_state_node_t), intent(inout) :: self
 
-      integer(int32) :: node1
+      integer :: j
 
-      call nfa%new_nfa_node()
-      if (nfa%is_exceeded()) call nfa%reallocate()
+      if (allocated(self%forward)) then
+         do j = 1, self%forward_top
+            if (allocated(self%forward(j)%c%sps)) then
+               call seg__sort_segments(self%forward(j)%c%sps)
+               call seg__merge_segments(self%forward(j)%c%sps)
+            end if
+         end do
+      end if
 
-      node1 = nfa%top
-
-      call generate_nfa(tree, tree%nodes(idx)%left_i, nfa, entry_i, node1)
-      call generate_nfa(tree, tree%nodes(idx)%right_i, nfa, node1, exit_i)
-
-   end subroutine generate_nfa_concatenate
-
-
-   pure recursive subroutine generate_nfa_closure(tree, idx, nfa, entry_i, exit_i)
-      implicit none
-      type(tree_t), intent(in) :: tree
-      type(nfa_graph_t), intent(inout) :: nfa
-      integer(int32), intent(in) :: idx
-      integer(int32), intent(in) :: entry_i, exit_i
-
-      integer(int32) :: node1, node2
-
-      call nfa%new_nfa_node()
-      if (nfa%is_exceeded()) call nfa%reallocate()
-      node1 = nfa%top
-
-      call nfa%new_nfa_node()
-      if (nfa%is_exceeded()) call nfa%reallocate()
-      node2 = nfa%top
-
-      call nfa%graph(entry_i)%add_transition(entry_i, node1, [SEG_EPSILON])
-      call generate_nfa(tree, tree%nodes(idx)%left_i, nfa, node1, node2)
-
-      call nfa%graph(node2)%add_transition(node2, node1, [SEG_EPSILON])
-      call nfa%graph(node1)%add_transition(node1, exit_i, [SEG_EPSILON])
-
-   end subroutine generate_nfa_closure
+   end subroutine nfa__merge_segments_of_transition
 
 end module forgex_nfa_node_m

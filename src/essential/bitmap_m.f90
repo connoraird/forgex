@@ -15,7 +15,9 @@ module forgex_bitmap_m
    contains
       procedure :: bmp__add_character_range, bmp__add_character_char, bmp__add_character_codepoint
       generic :: add => bmp__add_character_range, bmp__add_character_char, bmp__add_character_codepoint
+      procedure :: bmp2seg
    end type bmp_t
+
 
 contains
 
@@ -102,5 +104,49 @@ contains
 
    end subroutine bmp__add_character_range
 
+
+   pure subroutine bmp2seg(self, segments)
+      use :: forgex_segment_m, only: segment_t
+      implicit none
+      class(bmp_t), intent(in) :: self
+      type(segment_t), intent(inout), allocatable :: segments(:)
+
+      type(segment_t), allocatable :: tmp(:)
+      integer :: i, j, jb, je, k
+      logical :: in_range
+
+      in_range = .false.
+
+      k = 0
+      do i = 0, BMP_SIZE-1
+         do j = 0, bits_64-1
+            if (btest(self%b(i), j)) then
+               if (.not. in_range) then
+                  jb = i*bits_64-j
+                  in_range = .true.
+               end if
+            else
+               if (in_range) then
+                  je = i*bits_64+j -1
+                  k = k + 1
+                  tmp(k)%min = jb
+                  tmp(k)%max = je
+                  in_range = .false.
+               end if
+            end if
+         end do
+      end do
+
+      if (in_range) then
+         k = k + 1
+         tmp(k)%min = jb
+         tmp(k)%max = i*bits_64 + (bits_64-1)
+      end if
+
+      allocate(segments(k))
+      segments(:) = tmp(1:k)
+      deallocate(tmp)
+
+   end subroutine bmp2seg
 
 end module forgex_bitmap_m

@@ -112,8 +112,8 @@ contains
          ! Scan the all forward transitions.
          middle: do j = lbound(nfa_graph(iii)%forward, dim=1), nfa_graph(iii)%forward_top
 
-            ! If the forward segment list is not allocated, move to the next loop.
-            if (.not. allocated(nfa_graph(iii)%forward(j)%c)) cycle middle
+            ! ! If the forward segment list is not allocated, move to the next loop.
+            ! if (.not. allocated(nfa_graph(iii)%forward(j)%c)) cycle middle
 
             ! Get the destination index and if it is not NULL, call this function recursively.
             dst = nfa_graph(iii)%forward(j)%dst
