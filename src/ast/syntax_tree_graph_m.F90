@@ -449,11 +449,13 @@ contains
    !> and does not call any other recursive procedures.
    pure subroutine tree_graph__char_class(self)
       use :: forgex_utf8_m, only: idxutf8, len_utf8, count_token, ichar_utf8
+      use :: forgex_cube_m, only: cube_t, assignment(=)
       use :: forgex_enums_m
       implicit none
       class(tree_t), intent(inout) :: self
 
-      type(segment_t), allocatable :: seglist(:)
+      ! type(segment_t), allocatable :: seglist(:)
+      type(cube_t) :: cube
       character(:), allocatable :: buf
       type(tree_node_t) :: node
 
@@ -521,37 +523,37 @@ contains
          return
       end if
 
-      call interpret_class_string(buf, seglist, self%is_valid, self%code)
+      call interpret_class_string(buf, cube, self%is_valid, self%code)
 
       if (.not. self%is_valid) then
          return
       end if
 
-      if (.not. allocated(seglist)) then
-         self%code = ALLOCATION_ERR
-         self%is_valid = .false.
-         return
-      end if
+      ! if (.not. allocated(seglist)) then
+      !    self%code = ALLOCATION_ERR
+      !    self%is_valid = .false.
+      !    return
+      ! end if
 
-      if (size(seglist) < 1) then
-         self%code = SYNTAX_ERR_THIS_SHOULD_NOT_HAPPEN
-         self%is_valid = .false.
-         return
-      end if
+      ! if (size(seglist) < 1) then
+      !    self%code = SYNTAX_ERR_THIS_SHOULD_NOT_HAPPEN
+      !    self%is_valid = .false.
+      !    return
+      ! end if
 
       ! the seglist array have been allocated near the L362.
       if (is_inverted) then
-         call invert_segment_list(seglist)
+         call cube%invert()
       end if
 
-      if (.not. allocated(seglist)) then
-         error stop "ERROR: `seg_list` is not allocated. This should not happen."
-      end if
+      ! if (.not. allocated(seglist)) then
+      !    error stop "ERROR: `seg_list` is not allocated. This should not happen."
+      ! end if
 
       node = make_tree_node(op_char)
       ! if (.not. allocated(node%c)) allocate(node%c(size(seglist, dim=1)))
 
-      call node%c%add(seglist(:))
+      node%c = cube
 
       call self%register_connector(node, terminal, terminal)
 
@@ -978,22 +980,25 @@ contains
 
 
    !> This subroutine parses a pattern string and outputs a list of `segment_t` type.
-   pure subroutine interpret_class_string(str, seglist, is_valid, ierr)
+   pure subroutine interpret_class_string(str, cube, is_valid, ierr)
       use :: forgex_utf8_m, only: idxutf8, next_idxutf8, len_utf8, ichar_utf8
       use :: forgex_parameters_m
       use :: forgex_segment_m, register => register_segment_to_list
       use :: forgex_character_array_m
+      use :: forgex_cube_m, only: cube_t
       implicit none
 
       character(*), intent(in) :: str
-      type(segment_t), intent(inout), allocatable :: seglist(:)
+      type(cube_t), intent(inout) :: cube
       logical, intent(inout) :: is_valid
       integer, intent(inout) :: ierr
 
       integer :: i, j, k
       integer :: jerr
+
       type(segment_t) :: prev_seg, curr_seg
       type(segment_t), allocatable :: list(:), cache(:)
+
       logical :: backslashed
       logical :: prev_hyphenated, curr_hyphenated
       type(character_array_t), allocatable :: ca(:) ! character array
@@ -1182,9 +1187,7 @@ contains
          return
       end if
 
-      allocate(seglist(j))
-
-      seglist(1:j) = list(1:j) ! copy local array into the argument array.
+      call cube%add(list(1:j)) ! copy local array into the argument array.
 
    end subroutine interpret_class_string
 
@@ -1409,11 +1412,15 @@ contains
          str = '<CR>'
          return
 
+      else if (segments(1) == SEG_NULL) then
+         str = '<NULL>'
+         return
+
       else if (segments(1) == SEG_EMPTY) then
          str ="<EMPTY>"
          return
 
-      else if (siz == 1 .and. segments(1)%min == segments(j)%max) then
+      else if (siz == 1 .and. segments(1)%min == segments(1)%max) then
          str = '"'//char_utf8(segments(1)%min)//'"'
          return
 
@@ -1442,6 +1449,9 @@ contains
 
          else if (segments(j) == SEG_ZENKAKU_SPACE) then
             buf = buf//'<ZENKAKU SPACE>; '
+      
+         else if (segments(j)%min == 0) then
+            buf = buf//'<NULL>'//'-"'//char_utf8(segments(j)%max)//'"; '
 
          else if (segments(j)%max == UTF8_CODE_MAX) then
             buf = buf//'"'//char_utf8(segments(j)%min)//'"-"'//"<U+1FFFFF>"//'; '

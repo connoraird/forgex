@@ -52,6 +52,7 @@ module forgex_segment_m
    type(segment_t), parameter, public :: SEG_ERROR = segment_t(-2, -2)
    type(segment_t), parameter, public :: SEG_EPSILON = segment_t(UTF8_CODE_MAX+3, UTF8_CODE_MAX+3)
    type(segment_t), parameter, public :: SEG_EMPTY = segment_t(UTF8_CODE_EMPTY, UTF8_CODE_EMPTY)
+   type(segment_t), parameter, public :: SEG_NULL  = segment_t(0,0)
    type(segment_t), parameter, public :: SEG_ANY   = segment_t(UTF8_CODE_MIN, UTF8_CODE_MAX)
    type(segment_t), parameter, public :: SEG_TAB   = segment_t(9, 9)     ! Horizontal Tab
    type(segment_t), parameter, public :: SEG_LF    = segment_t(10, 10)   ! Line Feed

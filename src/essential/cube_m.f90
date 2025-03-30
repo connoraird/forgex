@@ -14,7 +14,7 @@ module forgex_cube_m
    use :: forgex_parameters_m, only: BMP_SIZE, BMP_SIZE_BIT, bits_64, INVALID_CODE_POINT
    use :: forgex_bitmap_m, only: bmp_t
    use :: forgex_segment_m, only: segment_t, symbol_to_segment, &
-      operator(.in.), SEG_INIT, SEG_EPSILON, operator(==), width_of_segment
+      operator(.in.), SEG_INIT, SEG_EPSILON, operator(==), width_of_segment, invert_segment_list
    use :: forgex_utf8_m, only: ichar_utf8
    implicit none
    private
@@ -273,6 +273,8 @@ contains
 
       ! ### NOT IMPLEMENTED SPS INVERTION PROCESS ### ! 
 
+      call invert_segment_list(self%sps)
+
    end subroutine cube__invert
 
 
@@ -298,10 +300,11 @@ contains
 
 
    pure function cube__first_codepoint(self) result(ret)
+      use :: forgex_parameters_m, only: UTF8_CODE_MAX
       implicit none
       class(cube_t), intent(in) :: self
 
-      integer :: i, num, pos, ret
+      integer :: i, num, pos, ret, candi
 
       do i = 0, BMP_SIZE-1
          if (self%bmp%b(i) /= 0) then
@@ -312,6 +315,19 @@ contains
       end do
 
       ret = INVALID_CODE_POINT
+      if (.not. allocated(self%sps)) return
+
+      candi = UTF8_CODE_MAX
+      do i = 1, size(self%sps)
+         candi = min(candi, self%sps(i)%min)
+      end do
+
+      if (candi /= UTF8_CODE_MAX) then
+         ret = candi
+      else
+         ret = -1
+      end if
+
    end function cube__first_codepoint
 
 
