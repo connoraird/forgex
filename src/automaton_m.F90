@@ -144,7 +144,7 @@ contains
 
          if (.not. allocated(self%nfa%graph(n_index)%forward(j)%c%sps)) cycle
 
-         if (self%nfa%graph(n_index)%forward(j)%c%sps(1) == SEG_EPSILON &
+         if (any(self%nfa%graph(n_index)%forward(j)%c%sps == SEG_EPSILON) &
             .and. .not. check_nfa_state(closure, self%nfa%graph(n_index)%forward(j)%dst)) then
 
             if (self%nfa%graph(n_index)%forward(j)%dst /= NFA_NULL_TRANSITION) then
@@ -153,7 +153,6 @@ contains
          end if
 
       end do
-
    end subroutine automaton__epsilon_closure
 
 

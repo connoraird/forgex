@@ -18,7 +18,7 @@ module forgex_nfa_node_m
    use, intrinsic :: iso_fortran_env, only: stderr=>error_unit, int32
    use :: forgex_parameters_m, only: NFA_NULL_TRANSITION, ALLOC_COUNT_INITTIAL, NFA_TRANSITION_UNIT
    use :: forgex_syntax_tree_graph_m, only: tree_t
-   use :: forgex_segment_m, only: segment_t, SEG_EPSILON, operator(/=)
+   use :: forgex_segment_m, only: segment_t, operator(/=)
    use :: forgex_cube_m, only: cube_t
    implicit none
    private
@@ -71,7 +71,7 @@ contains
          call self%realloc_forward()
       end if
 
-      call self%forward(j)%c%init(seg)
+      call self%forward(j)%c%add(seg)
 
       self%forward(j)%dst = dst
       self%forward(j)%is_registered = .true.

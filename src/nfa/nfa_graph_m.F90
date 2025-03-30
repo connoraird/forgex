@@ -116,7 +116,6 @@ contains
       call self%new_nfa_node()
       exit_i = self%top
 
-
       call generate_nfa(tree, tree%top, self, entry_i, exit_i)
 
       do i = 1, self%top
@@ -361,7 +360,6 @@ contains
       use :: forgex_enums_m, only: op_char, op_empty, op_closure, op_concat, op_repeat, op_union
       use :: forgex_parameters_m, only: INFINITE, INVALID_INDEX
 
-use :: forgex_segment_m
       implicit none
       type(tree_t), intent(in) :: tree
       integer(int32), intent(in) :: idx
@@ -374,6 +372,7 @@ use :: forgex_segment_m
 
       if (idx == INVALID_INDEX) return
       i = idx
+      entry_local = entry_i
 
       select case(tree%nodes(i)%op)
       case (op_char)
