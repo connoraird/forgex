@@ -184,8 +184,8 @@ contains
          lit%flag_closure = .true.
 
       case (op_char)
+         ! if (curr%c%is_single()) then ! <- experimental
          if (curr%c%num() == 1) then
-            
             lit%all%c = char_utf8(curr%c%first())
             lit%pref%c = char_utf8(curr%c%first())
             lit%suff%c =  char_utf8(curr%c%first())

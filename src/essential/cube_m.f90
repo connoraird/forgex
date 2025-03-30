@@ -35,6 +35,7 @@ module forgex_cube_m
       procedure :: print_sps => cube__dump_sps
       procedure :: invert => cube__invert
       procedure :: num => cube__number_of_flagged_bits
+      procedure :: is_single => cube__is_single_flag
       procedure :: first => cube__first_codepoint
       generic :: add => cube_add__symbol, cube_add__segment, cube_add__segment_list, cube_add__cube
    end type cube_t
@@ -258,7 +259,7 @@ contains
       type(cube_t), intent(in) :: cube
 
       integer :: i
-      do i = 0, BMP_SIZE-1
+      do concurrent (i = 0:BMP_SIZE-1)
          self%bmp%b(i) = ior(self%bmp%b(i), cube%bmp%b(i))
       end do
 
@@ -268,6 +269,7 @@ contains
 
    end subroutine cube_add__cube
 
+!=====================================================================!
 
    pure subroutine cube__invert(self)
       implicit none
@@ -291,17 +293,47 @@ contains
    end subroutine cube__invert
 
 
+   pure function cube__is_single_flag (self) result(ret)
+      implicit none
+      class(cube_t), intent(in) :: self
+
+      integer :: i, total_flags
+      logical :: ret
+
+      do i = 0, BMP_SIZE-1
+         if (self%bmp%b(i) /= 0 .and. popcnt(self%bmp%b(i)) > 1) then
+            ret = .false.
+            return
+         end if
+      end do
+
+      do i = 0, BMP_SIZE-1
+         total_flags = total_flags + popcnt(self%bmp%b(i))
+         if (total_flags > 1) then
+            ret = .false.
+            return
+         end if
+      end do
+
+      ret = .true.
+
+   end function cube__is_single_flag
+
+
    pure function cube__number_of_flagged_bits(self) result(ret)
       implicit none
       class(cube_t), intent(in) :: self
       integer :: ret
 
       integer :: i
+      integer :: partial_sum(0:BMP_SIZE-1)
 
       ret = 0
-      do i = 0, BMP_SIZE-1
-         ret = ret + popcnt(self%bmp%b(i))
+      do concurrent (i = 0:BMP_SIZE-1)
+         partial_sum(i) = popcnt(self%bmp%b(i))
       end do
+
+      ret = sum(partial_sum)
       
       if (allocated(self%sps)) then
          do i = 1, size(self%sps)

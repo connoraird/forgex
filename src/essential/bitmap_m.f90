@@ -104,7 +104,7 @@ contains
          self%b(ib) = ior(c1, shiftl(not(0_int64), pb))
 
          ! The integers between have all bits set to 1.
-         do i = ib +1, ie -1
+         do concurrent (i = ib+1:ie-1)
             self%b(i) = -1_int64
          end do
 
