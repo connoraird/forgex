@@ -215,6 +215,7 @@ contains
 
 
    pure subroutine cube_add__segment_list(self, seglist)
+use :: forgex_segment_m
       implicit none
       class(cube_t), intent(inout) :: self
       type(segment_t), intent(in) :: seglist(:)
@@ -253,40 +254,57 @@ contains
       end do
 
       p = 0
-      merge: block
+
+      joint: block
+         type(segment_t), allocatable :: cache(:)
          if (allocated(self%sps)) then
-            i = 1
-            j = 1
-            do while (i <= m .and. j <= k)
-               if (self%sps(i)%min < tmp(i)%min) then
-                  p = p + 1
-                  ret(p) = self%sps(i)
-                  i = i + 1
-               else
-                  p = p + 1
-                  ret(p) = tmp(j)
-                  j = j + 1
-               end if
-            end do
-
-            do while (i <= m .and. k <=siz)
-               p = p + 1
-               ret(p) = self%sps(i)
-               i = i + 1
-            end do
-            do while (j <= n .and. k <= siz)
-               p = p + 1
-               ret(p) = tmp(j)
-               j = j + 1; k = k + 1
-            end do
-         else
-            p = size(tmp, dim=1)
+            p = ubound(self%sps, dim=1)
+            cache = self%sps
+            deallocate(self%sps)
          end if
-      end block merge
 
-      if (allocated(self%sps)) deallocate(self%sps)
-      allocate(self%sps(p))
-      self%sps(:) = ret(1:p)
+         allocate(self%sps(1:p+k))
+         self%sps(1:p) = cache(1:p)
+         self%sps(p+1:p+k) = tmp(1:k)
+         return
+         
+      end block joint
+
+      ! merge: block
+      !    if (allocated(self%sps)) then
+      !       i = 1
+      !       j = 1
+      !       do while (i <= m .and. j <= k)
+      !          if (self%sps(i)%min < tmp(j)%min) then
+      !             p = p + 1
+      !             ret(p) = self%sps(i)
+      !             i = i + 1
+      !          else
+      !             p = p + 1
+      !             ret(p) = tmp(j)
+      !             j = j + 1
+      !          end if
+      !       end do
+
+      !       do while (i <= m .and. k <=siz)
+      !          p = p + 1
+      !          ret(p) = self%sps(i)
+      !          i = i + 1
+      !       end do
+      !       do while (j <= n .and. k <= siz)
+      !          p = p + 1
+      !          ret(p) = tmp(j)
+      !          j = j + 1; k = k + 1
+      !       end do
+      !    else
+      !       p = size(tmp, dim=1)
+      !    end if
+      ! end block merge
+
+      ! if (allocated(self%sps)) deallocate(self%sps)
+      ! allocate(self%sps(p))
+      ! self%sps(:) = ret(1:p)
+
 
    end subroutine cube_add__segment_list
 
