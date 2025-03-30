@@ -152,7 +152,7 @@ contains
       if (in_range) then
          k = k + 1
          tmp(k)%min = jb
-         tmp(k)%max = i*bits_64 + (bits_64-1)
+         tmp(k)%max = (i-1)*bits_64 + (bits_64-1)
       end if
 
       allocate(segments(k))

@@ -11,7 +11,7 @@
 #endif
 module forgex_cube_m
    use, intrinsic :: iso_fortran_env, only: int64, int32
-   use :: forgex_parameters_m, only: BMP_SIZE, BMP_SIZE_BIT, bits_64, INVALID_CODE_POINT
+   use :: forgex_parameters_m, only: BMP_SIZE, BMP_SIZE_BIT, bits_64, INVALID_CODE_POINT, UTF8_CODE_MAX
    use :: forgex_bitmap_m, only: bmp_t
    use :: forgex_segment_m, only: segment_t, symbol_to_segment, &
       operator(.in.), SEG_INIT, SEG_EPSILON, operator(==), width_of_segment, invert_segment_list
@@ -217,7 +217,6 @@ contains
          cp_max = seglist(j)%max
 
          call self%bmp%add(cp_min, cp_max)
-
          if (cp_max > BMP_SIZE_BIT) then
             k = k + 1
             what_to_add = segment_t(max(cp_min, BMP_SIZE_BIT), cp_max)
@@ -227,20 +226,23 @@ contains
          j = j + 1
       end do
 
-      p = 0
+      if (k == 0) return
+
       joint: block
          type(segment_t), allocatable :: cache(:)
          if (allocated(self%sps)) then
             p = ubound(self%sps, dim=1)
-            cache = self%sps
+            cache(1:p) = self%sps(1:p)
             deallocate(self%sps)
-         end if
 
-         allocate(self%sps(1:p+k))
-         self%sps(1:p) = cache(1:p)
-         self%sps(p+1:p+k) = tmp(1:k)
-         return
-         
+            allocate(self%sps(1:p+k))
+            self%sps(1:p) = cache(1:p)
+            self%sps(p+1:p+k) = tmp(1:k)
+         else
+            allocate(self%sps(1:k))
+            self%sps(1:k) = tmp(1:k)
+         end if
+   
       end block joint
 
    end subroutine cube_add__segment_list
@@ -266,14 +268,17 @@ contains
    pure subroutine cube__invert(self)
       implicit none
       class(cube_t), intent(inout) :: self
+      integer :: i
 
-      self%bmp%b(:) = not(self%bmp%b(:))
+      do concurrent (i = 0:BMP_SIZE-1)
+         self%bmp%b(i) = not(self%bmp%b(i))
+      end do
 
-      if (.not. allocated(self%sps)) return
-
-      ! ### NOT IMPLEMENTED SPS INVERTION PROCESS ### ! 
-
-      call invert_segment_list(self%sps)
+      if (.not. allocated(self%sps)) then
+         self%sps = [segment_t(BMP_SIZE_BIT, UTF8_CODE_MAX)]
+      else
+         call invert_segment_list(self%sps)
+      end if
 
    end subroutine cube__invert
 
