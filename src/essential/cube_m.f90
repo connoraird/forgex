@@ -5,16 +5,20 @@ module forgex_cube_m
    use, intrinsic :: iso_fortran_env, only: int64, int32
    use :: forgex_parameters_m, only: BMP_SIZE, BMP_SIZE_BIT, bits_64
    use :: forgex_bitmap_m, only: bmp_t
-   use :: forgex_segment_m, only: segment_t, symbol_to_segment, operator(.in.), SEG_INIT
+   use :: forgex_segment_m, only: segment_t, symbol_to_segment, &
+      operator(.in.), SEG_INIT, SEG_EPSILON, operator(==)
    use :: forgex_utf8_m, only: ichar_utf8
    implicit none
    private
 
 
    type, public :: cube_t
+      logical, private :: epsilon_flag = .false.
       type(bmp_t) :: bmp         ! for U+0000 .. U+FFFF BMP
       type(segment_t), allocatable :: sps(:) ! for U+10000 .. U+10FFFF SPs (SIP, SMP, etc.)
    contains
+      procedure :: flag_epsilon => cube_flag__epsilon
+      procedure :: is_flaged_epsilon => cube_flag__is_flaged_epsilon
       procedure :: cube_init__from_bmp
       procedure :: cube_init__from_segment
       procedure :: cube_init__from_segment_list
@@ -22,11 +26,9 @@ module forgex_cube_m
       procedure :: cube_add__segment
       procedure :: cube_add__segment_list
       procedure :: cube_add__cube
-      procedure :: cube__erase
       procedure :: free => cube__free
       procedure :: cube2seg => cube__bmp2seg
       procedure :: print_sps => cube__dump_sps
-      generic :: erase => cube__erase
       generic :: init => cube_init__from_bmp, cube_init__from_segment_list
       generic :: add => cube_add__symbol, cube_add__segment, cube_add__segment_list, cube_add__cube
    end type cube_t
@@ -35,18 +37,39 @@ module forgex_cube_m
       module procedure :: cube_t__symbol_in_cube
    end interface
 
+   interface assignment(=)
+      module procedure :: cube_t__cube_assign
+   end interface
+
    public :: operator(.in.)
+   public :: assignment(=)
 
    integer :: q
    type(bmp_t), parameter, public :: white_bmp = bmp_t([(0_int64, q=0, BMP_SIZE-1)])
 
 contains
 
+   pure subroutine cube_t__cube_assign(a, b)
+      implicit none
+      type(cube_t), intent(inout) :: a
+      type(cube_t), intent(in) :: b
+
+      integer :: num
+
+      a%epsilon_flag = b%epsilon_flag
+      a%bmp%b(:) = b%bmp%b(:)
+
+      if (.not. allocated(b%sps)) return
+      num = ubound(b%sps, dim=1)
+      a%sps = b%sps ! implicit reallocation
+
+   end subroutine cube_t__cube_assign
+
    
    pure function cube_t__symbol_in_cube (symbol, cube) result(ret)
       implicit none
       character(*), intent(in) :: symbol
-      type(cube_t(*)), intent(in) :: cube
+      type(cube_t), intent(in) :: cube
       logical :: ret
 
       integer :: cp
@@ -65,7 +88,7 @@ contains
    pure function cube_t__codepoint_in_cube (cp, cube) result(ret)
       implicit none
       integer(int32), intent(in) :: cp
-      type(cube_t(*)), intent(in) :: cube
+      type(cube_t), intent(in) :: cube
       logical :: ret
 
 
@@ -76,6 +99,20 @@ contains
       end if
 
    end function cube_t__codepoint_in_cube
+
+!=====================================================================!
+
+   pure subroutine cube_flag__epsilon(self)
+      implicit none
+      class(cube_t), intent(inout) :: self
+      self%epsilon_flag = .true.
+   end subroutine cube_flag__epsilon
+
+   pure logical function cube_flag__is_flaged_epsilon(self)
+      implicit none
+      class(cube_t), intent(in) :: self
+      cube_flag__is_flaged_epsilon = self%epsilon_flag
+   end function cube_flag__is_flaged_epsilon
 
 !=====================================================================!
 
@@ -97,6 +134,11 @@ contains
       
       integer :: cp_min, cp_max
 
+      if (seg == SEG_EPSILON) then
+         self%epsilon_flag = .true.
+         return
+      end if
+
       self%bmp = white_bmp
 
       cp_min = seg%min
@@ -114,16 +156,6 @@ contains
    end subroutine cube_init__from_segment
 
 
-   pure subroutine cube__erase(self)
-      implicit none
-      class(cube_t), intent(inout) :: self
-
-      self%bmp = white_bmp
-      if (allocated(self%sps)) deallocate(self%sps)
-      self%sps = [SEG_INIT]
-   end subroutine cube__erase
-
-
    pure subroutine cube_init__from_segment_list(self, seglist)
       implicit none
       class(cube_t), intent(inout) :: self
@@ -135,6 +167,10 @@ contains
       type(segment_t), allocatable :: tmp(:)
 
       siz_list = size(seglist, dim=1)
+
+      if (any(seglist == SEG_EPSILON)) then
+         self%epsilon_flag = .true.
+      end if
 
       allocate(tmp(siz_list))
       
@@ -215,7 +251,6 @@ contains
 
 
    pure subroutine cube_add__segment_list(self, seglist)
-use :: forgex_segment_m
       implicit none
       class(cube_t), intent(inout) :: self
       type(segment_t), intent(in) :: seglist(:)
@@ -231,6 +266,10 @@ use :: forgex_segment_m
          m = 0
       end if 
       n = size(seglist, dim=1)
+
+      if (any(seglist == SEG_EPSILON)) then
+         self%epsilon_flag = .true.
+      end if
 
       siz = m + n
       allocate(tmp(n))
