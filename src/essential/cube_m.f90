@@ -85,7 +85,11 @@ contains
       if (cp <= BMP_SIZE_BIT) then
          ret = iand(cube%bmp%b(cp/bits_64), ishft(1_int64, mod(cp, bits_64))) /= 0_int64
       else
-         ret = symbol_to_segment(symbol) .in. cube%sps(:)
+         if (allocated(cube%sps)) then
+            ret = symbol_to_segment(symbol) .in. cube%sps(:)
+         else
+            ret = .false.
+         end if
       end if
 
    end function cube_t__symbol_in_cube
