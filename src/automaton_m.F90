@@ -133,19 +133,24 @@ contains
 
       call add_nfa_state(closure, n_index)
 
-      n_node = self%nfa%graph(n_index)
+      ! n_node = self%nfa%graph(n_index)
 
-      if (.not. allocated(n_node%forward)) return
+      if (.not. allocated(self%nfa%graph(n_index)%forward)) return
 
        ! すべての順方向の遷移をスキャンする
-      do j = 1, n_node%forward_top
+      do j = 1, self%nfa%graph(n_index)%forward_top
          ! 一時変数にコピー
-         n_tra = n_node%forward(j)
+         ! n_tra = self%nfa%graph(n_index)%forward(j)
 
-         if (.not. allocated(n_tra%c%sps)) cycle
+         if (.not. allocated(self%nfa%graph(n_index)%forward(j)%c%sps)) cycle
 
-         if (any(n_tra%c%sps == SEG_EPSILON) .and. .not. check_nfa_state(closure, n_tra%dst)) then
-            if (n_tra%dst /= NFA_NULL_TRANSITION) call self%epsilon_closure(closure, n_tra%dst)
+         if (any(self%nfa%graph(n_index)%forward(j)%c%sps == SEG_EPSILON) &
+            .and. .not. check_nfa_state(closure, self%nfa%graph(n_index)%forward(j)%dst)) then
+
+            
+            if (self%nfa%graph(n_index)%forward(j)%dst /= NFA_NULL_TRANSITION) then
+               call self%epsilon_closure(closure, self%nfa%graph(n_index)%forward(j)%dst)
+            end if
          end if
 
       end do
@@ -213,7 +218,7 @@ contains
       integer                :: i, j, k
 
       ! temporary variables ... to increase the cache hit rate
-      type(nfa_state_node_t)       :: n_node       ! This variable simulates a pointer.
+      type(nfa_state_node_t) :: n_node       ! This variable simulates a pointer.
       type(segment_t), allocatable :: segs(:)
       type(nfa_transition_t)       :: n_tra
       type(cube_t) :: cube
@@ -229,19 +234,19 @@ contains
          if (check_nfa_state(current_set, i)) then
 
             ! Copy to a temporary variable.
-            n_node = self%nfa%graph(i)
+            ! n_node = self%nfa%graph(i)
 
-            if (.not. allocated(n_node%forward)) cycle
+            if (.not. allocated(self%nfa%graph(i)%forward)) cycle
 
             ! Scan the all transitions belong to the NFA state node.
-            middle: do j = 1, n_node%forward_top
+            middle: do j = 1, self%nfa%graph(i)%forward_top
 
                ! Copy to a temporary variable of type(nfa_transition_t)
-               n_tra = n_node%forward(j)
+               ! n_tra = self%nfa%graph(i)%forward(j)
 
 
                ! If it has a destination,
-               if (n_tra%dst /= NFA_NULL_TRANSITION) then
+               if (self%nfa%graph(i)%forward(j)%dst /= NFA_NULL_TRANSITION) then
 
                   ! Investigate the all of segments which transition has.
                   ! inner: do k = 1, size(n_tra%c%sps)
@@ -255,9 +260,9 @@ contains
                      ! If the symbol is in the segment list `segs` or if the segment is epsilon,
                      ! if ( symbol_to_segment(symbol) .in. segs) then
                      if (symbol .in. cube) then
-
+      
                         ! Add the index of the NFA state node to `state_set` of type(nfa_state_set_t).
-                        call add_nfa_state(state_set, n_node%forward(j)%dst)
+                        call add_nfa_state(state_set, self%nfa%graph(i)%forward(j)%dst)
 
                      end if
                      

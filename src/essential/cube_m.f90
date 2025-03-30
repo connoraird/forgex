@@ -21,12 +21,14 @@ module forgex_cube_m
       procedure :: cube_add__symbol
       procedure :: cube_add__segment
       procedure :: cube_add__segment_list
+      procedure :: cube_add__cube
       procedure :: cube__erase
       procedure :: free => cube__free
       procedure :: cube2seg => cube__bmp2seg
+      procedure :: print_sps => cube__dump_sps
       generic :: erase => cube__erase
       generic :: init => cube_init__from_bmp, cube_init__from_segment_list
-      generic :: add => cube_add__symbol, cube_add__segment, cube_add__segment_list
+      generic :: add => cube_add__symbol, cube_add__segment, cube_add__segment_list, cube_add__cube
    end type cube_t
 
    interface operator(.in.)
@@ -214,7 +216,7 @@ contains
       class(cube_t), intent(inout) :: self
       type(segment_t), intent(in) :: seglist(:)
 
-      integer :: cp_min, cp_max, siz, i, j, k, m, n
+      integer :: cp_min, cp_max, siz, i, j, k, m, n, p
 
       type(segment_t), allocatable :: tmp(:), ret(:)
       type(segment_t) :: what_to_add
@@ -227,9 +229,8 @@ contains
       n = size(seglist, dim=1)
 
       siz = m + n
-
       allocate(tmp(n))
-      allocate(ret(siz))
+      allocate(ret(siz+1))
 
       k = 0 ! for tmp
       j = 1 ! for segments to add
@@ -248,38 +249,58 @@ contains
          j = j + 1
       end do
 
+      p = 0
       merge: block
          if (allocated(self%sps)) then
             i = 1
             j = 1
-            k = 1
-            do while (i <= m .and. j <= n)
+            do while (i <= m .and. j <= k)
                if (self%sps(i)%min < tmp(i)%min) then
-                  ret(k) = self%sps(i)
-                  i = i + 1; k = k + 1
+                  p = p + 1
+                  ret(p) = self%sps(i)
+                  i = i + 1
                else
-                  ret(k) = tmp(j)
-                  j = j + 1; k = k + 1
+                  p = p + 1
+                  ret(p) = tmp(j)
+                  j = j + 1
                end if
             end do
-            if (k==0) k = 1
+
             do while (i <= m .and. k <=siz)
-               ret(k) = self%sps(i)
-               i = i + 1; k = k + 1
+               p = p + 1
+               ret(p) = self%sps(i)
+               i = i + 1
             end do
             do while (j <= n .and. k <= siz)
-               ret(k) = tmp(j)
+               p = p + 1
+               ret(p) = tmp(j)
                j = j + 1; k = k + 1
             end do
+         else
+            p = size(tmp, dim=1)
          end if
       end block merge
-
-      if (allocated(self%sps)) deallocate(self%sps)
-      allocate(self%sps(k-1))
-      self%sps(:) = ret(1:k-1)
       
+      if (allocated(self%sps)) deallocate(self%sps)
+      allocate(self%sps(p))
+      self%sps(:) = ret(1:p)
+
    end subroutine cube_add__segment_list
 
+
+   pure subroutine cube_add__cube(self, cube)
+      implicit none
+      class(cube_t), intent(inout) :: self
+      type(cube_t), intent(in) :: cube
+
+      integer :: i
+      do i = 0, BMP_SIZE-1
+         self%bmp%b(i) = ior(self%bmp%b(i), cube%bmp%b(i))
+      end do
+
+      call cube_add__segment_list(self, cube%sps)
+
+   end subroutine cube_add__cube
 
    pure subroutine cube__free(self)
       implicit none
@@ -312,11 +333,23 @@ contains
 
       segments(1:m) = tmp(1:m)
 
-      if (n > 0) segments(m+1:m+n-1) = self%sps(1:n)
+      if (n > 0) segments(m+1:m+n) = self%sps(1:n)
 
 
    end subroutine cube__bmp2seg
 
+
+   subroutine cube__dump_sps(self)
+      class(cube_t), intent(in) :: self
+      
+      integer :: i
+      if (.not. allocated(self%sps)) return
+
+      do i = 1, ubound(self%sps, dim=1)
+         write(0,*) self%sps(i)%print()
+      end do
+
+   end subroutine cube__dump_sps
 
 end module forgex_cube_m
    

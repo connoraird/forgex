@@ -8,6 +8,9 @@
 !
 !! This file defines `segment_t` representing subset of UTF-8 character codeset
 !! and contains procedures for that.
+#ifdef IMPURE
+#define pure
+#endif
 module forgex_segment_m
    use, intrinsic :: iso_fortran_env, only: int32
    use :: forgex_parameters_m, only: UTF8_CODE_MIN, UTF8_CODE_MAX, UTF8_CODE_EMPTY
@@ -47,7 +50,7 @@ module forgex_segment_m
    ! See ASCII code set
    type(segment_t), parameter, public :: SEG_INIT  = segment_t(UTF8_CODE_MAX+2, UTF8_CODE_MAX+2)
    type(segment_t), parameter, public :: SEG_ERROR = segment_t(-2, -2)
-   type(segment_t), parameter, public :: SEG_EPSILON = segment_t(-1, -1)
+   type(segment_t), parameter, public :: SEG_EPSILON = segment_t(UTF8_CODE_MAX+3, UTF8_CODE_MAX+3)
    type(segment_t), parameter, public :: SEG_EMPTY = segment_t(UTF8_CODE_EMPTY, UTF8_CODE_EMPTY)
    type(segment_t), parameter, public :: SEG_ANY   = segment_t(UTF8_CODE_MIN, UTF8_CODE_MAX)
    type(segment_t), parameter, public :: SEG_TAB   = segment_t(9, 9)     ! Horizontal Tab
@@ -501,7 +504,10 @@ contains
       integer :: i, j, n, m
 
       if (.not. allocated(segments)) return
-      n = size(segments)
+
+      n = ubound(segments, dim=1)
+
+      if (n <= 0) return
 
       m = 1
       do i = 2, n

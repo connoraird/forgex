@@ -12,6 +12,7 @@
 !> The `nfa_t` is defined as a class representing NFA.
 #ifdef IMPURE
 #define pure
+#define elemental
 #endif
 module forgex_nfa_node_m
    use, intrinsic :: iso_fortran_env, only: stderr=>error_unit, int32
@@ -33,7 +34,7 @@ module forgex_nfa_node_m
    type, public :: nfa_state_node_t
       integer(int32) :: own_i
       type(nfa_transition_t), allocatable :: forward(:)
-      integer(int32) :: forward_top
+      integer(int32) :: forward_top = 1
       integer(int32) :: alloc_count_f = ALLOC_COUNT_INITTIAL
    contains
       procedure :: add_transition => nfa__add_transition
@@ -54,7 +55,7 @@ contains
       integer :: j, k
 
       j = NFA_NULL_TRANSITION
-      if (allocated(self%forward) .and. any(seg /= SEG_EPSILON)) then
+      if (allocated(self%forward)) then
          do k = 1, self%forward_top
             if (dst == self%forward(k)%dst) then
                j = k
@@ -70,7 +71,8 @@ contains
          call self%realloc_forward()
       end if
 
-      call self%forward(j)%c%add(seg)
+      call self%forward(j)%c%init(seg)
+
       self%forward(j)%dst = dst
       self%forward(j)%is_registered = .true.
 
@@ -122,9 +124,11 @@ contains
 
       integer :: i
 
-      do i = 1, size(self%forward, dim=1) 
-         call self%forward(i)%c%free
-      end do
+      if (allocated(self%forward)) then
+         do i = 1, size(self%forward, dim=1) 
+            call self%forward(i)%c%free
+         end do
+      end if
       if (allocated(self%forward)) deallocate(self%forward)
    end subroutine nfa__deallocate
 

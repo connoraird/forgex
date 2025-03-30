@@ -190,14 +190,15 @@ contains
       enqueue : block
          do i = NFA_STATE_BASE, self%top
             do j = 1, self%graph(i)%forward_top-1
-               tra = self%graph(i)%forward(j)
-               if (tra%dst /= NFA_NULL_TRANSITION) then
-                  do k = 1,  size(tra%c%sps, dim=1)
-                     if (tra%c%sps(k) /= SEG_INIT) then
-                        call queue%enqueue(tra%c%sps(k))
+
+               if (self%graph(i)%forward(j)%dst /= NFA_NULL_TRANSITION) then
+                  do k = 1,  size(self%graph(i)%forward(j)%c%sps, dim=1)
+                     if (self%graph(i)%forward(j)%c%sps(k) /= SEG_INIT) then
+                        call queue%enqueue(self%graph(i)%forward(j)%c%sps(k))
                      end if
                   end do
                end if
+
             end do
          end do
       end block enqueue
@@ -318,25 +319,26 @@ contains
       do i = self%nfa_base, self%top
 
          write(uni, '(a, i4, a)', advance='no') "state ", i, ": "
-         node = self%graph(i)
+         ! node = self%graph(i)
          if (i == nfa_exit) then
             write(uni, '(a)') "<Accepted>"
             cycle
          end if
 
-         do j = 1, node%forward_top
-            if (.not. allocated(node%forward)) cycle
+         do j = 1, self%graph(i)%forward_top
+            if (.not. allocated(self%graph(i)%forward)) cycle
 
-            transition = node%forward(j)
-            call transition%c%cube2seg(seglist)
+            ! transition = self%graph(i)%forward(j)
 
-            if (transition%dst > NFA_NULL_TRANSITION) then
+            call self%graph(i)%forward(j)%c%cube2seg(seglist)
+
+            if (self%graph(i)%forward(j)%dst > NFA_NULL_TRANSITION) then
                do k = 1, size(seglist, dim=1)
                   if (seglist(k) == SEG_INIT) cycle
 
                   buf = seglist(k)%print()
                   if (seglist(k) == SEG_EPSILON) buf = '?'
-                  write(uni, '(a,a,a2,i0,a1)', advance='no') "(", trim(buf), ", ", transition%dst, ")"
+                  write(uni, '(a,a,a2,i0,a1)', advance='no') "(", trim(buf), ", ", self%graph(i)%forward(j)%dst, ")"
 
                enddo
             end if
@@ -348,8 +350,10 @@ contains
 !=====================================================================!
 
    pure recursive subroutine generate_nfa(tree, idx, nfa, entry_i, exit_i)
-      use :: forgex_enums_m, only: op_char, op_empty, op_closure, op_concat, op_repeat
+      use :: forgex_enums_m, only: op_char, op_empty, op_closure, op_concat, op_repeat, op_union
       use :: forgex_parameters_m, only: INFINITE, INVALID_INDEX
+
+use :: forgex_segment_m
       implicit none
       type(tree_t), intent(in) :: tree
       integer(int32), intent(in) :: idx
@@ -361,6 +365,7 @@ contains
       integer :: node1, node2, entry_local
 
       if (idx == INVALID_INDEX) return
+      i = idx
 
       select case(tree%nodes(i)%op)
       case (op_char)
@@ -377,7 +382,11 @@ contains
       case (op_closure)
          ! Handle closure (Kleene star) operations by creating new node and adding appropriate transition
          call generate_nfa_closure(tree, idx, nfa, entry_i, exit_i)
-      
+      case (op_union)
+         ! Handle union operation by recursively generating NFA for left and right subtrees.
+         call generate_nfa(tree, tree%nodes(i)%left_i, nfa, entry_i, exit_i)
+         call generate_nfa(tree, tree%nodes(i)%right_i, nfa, entry_i, exit_i)
+
       case (op_concat)
          ! Handle concatenation operations by recursively generating NFA for left and right subtrees.
          call generate_nfa_concatenate(tree, idx, nfa, entry_i, exit_i)
@@ -417,6 +426,7 @@ contains
 
                call generate_nfa(tree, tree%nodes(i)%left_i, nfa, entry_local, node2)
                call nfa%graph(node2)%add_transition(node2, exit_i, [SEG_EPSILON])
+
                entry_local = node2
             end do
             
