@@ -117,17 +117,19 @@ contains
 
       in_range = .false.
 
+      allocate(tmp(BMP_SIZE))
+
       k = 0
       do i = 0, BMP_SIZE-1
          do j = 0, bits_64-1
             if (btest(self%b(i), j)) then
                if (.not. in_range) then
-                  jb = i*bits_64-j
+                  jb = i*bits_64 + j
                   in_range = .true.
                end if
             else
                if (in_range) then
-                  je = i*bits_64+j -1
+                  je = i*bits_64 +j -1
                   k = k + 1
                   tmp(k)%min = jb
                   tmp(k)%max = je
