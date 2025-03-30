@@ -144,10 +144,9 @@ contains
 
          if (.not. allocated(self%nfa%graph(n_index)%forward(j)%c%sps)) cycle
 
-         if (any(self%nfa%graph(n_index)%forward(j)%c%sps == SEG_EPSILON) &
+         if (self%nfa%graph(n_index)%forward(j)%c%sps(1) == SEG_EPSILON &
             .and. .not. check_nfa_state(closure, self%nfa%graph(n_index)%forward(j)%dst)) then
 
-            
             if (self%nfa%graph(n_index)%forward(j)%dst /= NFA_NULL_TRANSITION) then
                call self%epsilon_closure(closure, self%nfa%graph(n_index)%forward(j)%dst)
             end if
@@ -255,7 +254,7 @@ contains
                      ! Note the implicit reallocation.
                      ! segs = n_tra%c
 
-                     cube = n_tra%c
+                     cube = self%nfa%graph(i)%forward(j)%c
 
                      ! If the symbol is in the segment list `segs` or if the segment is epsilon,
                      ! if ( symbol_to_segment(symbol) .in. segs) then

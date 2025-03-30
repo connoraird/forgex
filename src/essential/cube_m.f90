@@ -151,8 +151,11 @@ contains
          end if
       enddo
       if (allocated(self%sps)) deallocate(self%sps)
-      allocate(self%sps(j))
-      self%sps(1:j) = tmp(1:j)
+
+      if (j /= 0) then
+         allocate(self%sps(j))
+         self%sps(1:j) = tmp(1:j)
+      end if
 
    end subroutine cube_init__from_segment_list
 
@@ -280,7 +283,7 @@ contains
             p = size(tmp, dim=1)
          end if
       end block merge
-      
+
       if (allocated(self%sps)) deallocate(self%sps)
       allocate(self%sps(p))
       self%sps(:) = ret(1:p)

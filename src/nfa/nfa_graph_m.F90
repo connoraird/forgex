@@ -192,11 +192,15 @@ contains
             do j = 1, self%graph(i)%forward_top-1
 
                if (self%graph(i)%forward(j)%dst /= NFA_NULL_TRANSITION) then
-                  do k = 1,  size(self%graph(i)%forward(j)%c%sps, dim=1)
-                     if (self%graph(i)%forward(j)%c%sps(k) /= SEG_INIT) then
-                        call queue%enqueue(self%graph(i)%forward(j)%c%sps(k))
-                     end if
-                  end do
+                  if (allocated(self%graph(i)%forward(j)%c%sps)) then
+                     do k = 1,  size(self%graph(i)%forward(j)%c%sps, dim=1)
+
+                        if (self%graph(i)%forward(j)%c%sps(k) /= SEG_INIT) then
+                           call queue%enqueue(self%graph(i)%forward(j)%c%sps(k))
+                        end if                     
+               
+                     end do
+                  end if
                end if
 
             end do
@@ -223,8 +227,8 @@ contains
                cube%sps(m) = cache
             end if
          end do 
-         
-         cube%sps = cube%sps(1:m) ! reallocation implicitly
+         if (m > 0) cube%sps(1:m) = cube%sps(1:m) ! reallocation implicitly
+
       end block dequeue
 
       call disjoin(cube%sps)
@@ -287,9 +291,13 @@ contains
          end do
       end block
 
-      if (size(transition%c%sps, dim=1) < n) then
-         deallocate(transition%c%sps)
-         allocate(transition%c%sps(n))
+      if (n == 0) return
+
+      if (allocated(transition%c%sps)) then
+         if (size(transition%c%sps, dim=1) < n) then
+            deallocate(transition%c%sps)
+            allocate(transition%c%sps(n))
+         end if
       end if
 
       ! Deep copy the result into the arguemnt's component
