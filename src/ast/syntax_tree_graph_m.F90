@@ -656,7 +656,7 @@ contains
          call node%c%add(SEG_LOWERCASE)
          call node%c%add(SEG_UNDERSCORE)
          call node%c%add(SEG_DIGIT)
-         call node%c%add(SEG_UNDERSCORE)
+         call node%c%add(SEG_UPPERCASE)
 
          ! allocate(seglist(4))
          ! seglist(1) = SEG_LOWERCASE
@@ -668,7 +668,7 @@ contains
          call node%c%add(SEG_LOWERCASE)
          call node%c%add(SEG_UNDERSCORE)
          call node%c%add(SEG_DIGIT)
-         call node%c%add(SEG_UNDERSCORE)
+         call node%c%add(SEG_UPPERCASE)
          call node%c%invert()
          ! allocate(seglist(4))
          ! seglist(1) = SEG_LOWERCASE
