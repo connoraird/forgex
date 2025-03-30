@@ -129,6 +129,7 @@ contains
 
       type(nfa_state_node_t) :: n_node
       type(nfa_transition_t) :: n_tra
+      integer :: dst
       integer :: j
 
       call add_nfa_state(closure, n_index)
@@ -144,15 +145,19 @@ contains
 
          if (.not. allocated(self%nfa%graph(n_index)%forward(j)%c%sps)) cycle
 
-         if (any(self%nfa%graph(n_index)%forward(j)%c%sps == SEG_EPSILON) &
-            .and. .not. check_nfa_state(closure, self%nfa%graph(n_index)%forward(j)%dst)) then
+         dst = self%nfa%graph(n_index)%forward(j)%dst
 
-            if (self%nfa%graph(n_index)%forward(j)%dst /= NFA_NULL_TRANSITION) then
-               call self%epsilon_closure(closure, self%nfa%graph(n_index)%forward(j)%dst)
+         ! if (any(self%nfa%graph(n_index)%forward(j)%c%sps == SEG_EPSILON) &
+         if (self%nfa%graph(n_index)%forward(j)%c%is_flaged_epsilon() &
+         .and. .not. check_nfa_state(closure, dst)) then
+
+            if (dst /= NFA_NULL_TRANSITION) then
+               call self%epsilon_closure(closure, dst)
             end if
          end if
 
       end do
+
    end subroutine automaton__epsilon_closure
 
 
@@ -251,11 +256,9 @@ contains
 
                      ! Copy to a temporary variable fo type(segment_t).
                      ! Note the implicit reallocation.
-                     ! segs = n_tra%c
 
                      ! If the symbol is in the segment list `segs` or if the segment is epsilon,
-                     ! if ( symbol_to_segment(symbol) .in. segs) then
-                     if (symbol .in. self%nfa%graph(i)%forward(j)%c) then
+                     if ((symbol .in. self%nfa%graph(i)%forward(j)%c) .or. self%nfa%graph(i)%forward(j)%c%is_flaged_epsilon()) then
       
                         ! Add the index of the NFA state node to `state_set` of type(nfa_state_set_t).
                         call add_nfa_state(state_set, self%nfa%graph(i)%forward(j)%dst)

@@ -18,7 +18,7 @@ module forgex_nfa_graph_m
    use :: forgex_nfa_state_set_m, only: nfa_state_set_t, add_nfa_state, check_nfa_state
    use :: forgex_parameters_m, only: NFA_STATE_BASE, NFA_STATE_UNIT, NFA_STATE_LIMIT, NFA_NULL_TRANSITION
    use :: forgex_segment_m, only: SEG_EPSILON
-   use :: forgex_cube_m, only: cube_t
+   use :: forgex_cube_m, only: cube_t, assignment(=)
    implicit none
 
    type, public :: nfa_graph_t
@@ -151,7 +151,7 @@ contains
 
          if (.not. allocated(n_tra%c%sps)) cycle
 
-         if (any(n_tra%c%sps == SEG_EPSILON) .and. .not. check_nfa_state(state_set, n_tra%dst)) then
+         if (n_tra%c%is_flaged_epsilon() .and. .not. check_nfa_state(state_set, n_tra%dst)) then
             if (n_tra%dst /= NFA_NULL_TRANSITION) call self%mark_epsilon_transition(state_set, n_tra%dst)
          end if
       end do
@@ -181,6 +181,8 @@ contains
       class(nfa_graph_t), intent(inout) :: self
       type(cube_t), intent(inout) :: cube 
 
+      type(nfa_transition_t) :: node
+
       type(priority_queue_t) :: queue
       type(nfa_transition_t) :: tra
 
@@ -190,11 +192,13 @@ contains
          do i = NFA_STATE_BASE, self%top
             do j = 1, self%graph(i)%forward_top-1
 
-               if (self%graph(i)%forward(j)%dst /= NFA_NULL_TRANSITION) then
-                  if (allocated(self%graph(i)%forward(j)%c%sps)) then
-                     do k = 1,  size(self%graph(i)%forward(j)%c%sps, dim=1)
+               node = self%graph(i)%forward(j)
 
-                        if (self%graph(i)%forward(j)%c%sps(k) /= SEG_INIT) then
+               if (node%dst /= NFA_NULL_TRANSITION) then
+                  if (allocated(node%c%sps)) then
+                     do k = 1,  size(node%c%sps, dim=1)
+
+                        if (node%c%sps(k) /= SEG_INIT) then
                            call queue%enqueue(self%graph(i)%forward(j)%c%sps(k))
                         end if                     
                
@@ -336,6 +340,9 @@ contains
             if (.not. allocated(self%graph(i)%forward)) cycle
 
             ! transition = self%graph(i)%forward(j)
+            if (self%graph(i)%forward(j)%c%is_flaged_epsilon()) then
+               write(uni, '(a,a,a2,i0,a1)', advance='no') "(", "?", ", ", self%graph(i)%forward(j)%dst, ")"
+            end if
 
             call self%graph(i)%forward(j)%c%cube2seg(seglist)
 
@@ -344,7 +351,6 @@ contains
                   if (seglist(k) == SEG_INIT) cycle
 
                   buf = seglist(k)%print()
-                  if (seglist(k) == SEG_EPSILON) buf = '?'
                   write(uni, '(a,a,a2,i0,a1)', advance='no') "(", trim(buf), ", ", self%graph(i)%forward(j)%dst, ")"
 
                enddo

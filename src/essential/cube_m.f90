@@ -19,9 +19,9 @@ module forgex_cube_m
    contains
       procedure :: flag_epsilon => cube_flag__epsilon
       procedure :: is_flaged_epsilon => cube_flag__is_flaged_epsilon
-      procedure :: cube_init__from_bmp
-      procedure :: cube_init__from_segment
-      procedure :: cube_init__from_segment_list
+      ! procedure :: cube_init__from_bmp
+      ! procedure :: cube_init__from_segment
+      ! procedure :: cube_init__from_segment_list
       procedure :: cube_add__symbol
       procedure :: cube_add__segment
       procedure :: cube_add__segment_list
@@ -29,7 +29,7 @@ module forgex_cube_m
       procedure :: free => cube__free
       procedure :: cube2seg => cube__bmp2seg
       procedure :: print_sps => cube__dump_sps
-      generic :: init => cube_init__from_bmp, cube_init__from_segment_list
+      ! generic :: init => cube_init__from_bmp, cube_init__from_segment_list
       generic :: add => cube_add__symbol, cube_add__segment, cube_add__segment_list, cube_add__cube
    end type cube_t
 
@@ -117,83 +117,83 @@ contains
 !=====================================================================!
 
 
-   pure subroutine cube_init__from_bmp(self, bmp)
-      implicit none
-      class(cube_t), intent(inout) :: self
-      type(bmp_t), intent(in) :: bmp
+   ! pure subroutine cube_init__from_bmp(self, bmp)
+   !    implicit none
+   !    class(cube_t), intent(inout) :: self
+   !    type(bmp_t), intent(in) :: bmp
 
-      self%bmp = bmp
+   !    self%bmp = bmp
 
-   end subroutine cube_init__from_bmp
+   ! end subroutine cube_init__from_bmp
 
 
-   pure subroutine cube_init__from_segment(self, seg)
-      implicit none
-      class(cube_t), intent(inout) :: self
-      type(segment_t), intent(in) :: seg
+   ! pure subroutine cube_init__from_segment(self, seg)
+   !    implicit none
+   !    class(cube_t), intent(inout) :: self
+   !    type(segment_t), intent(in) :: seg
       
-      integer :: cp_min, cp_max
+   !    integer :: cp_min, cp_max
 
-      if (seg == SEG_EPSILON) then
-         self%epsilon_flag = .true.
-         return
-      end if
+   !    if (seg == SEG_EPSILON) then
+   !       self%epsilon_flag = .true.
+   !       return
+   !    end if
 
-      self%bmp = white_bmp
+   !    self%bmp = white_bmp
 
-      cp_min = seg%min
-      cp_max = seg%max
+   !    cp_min = seg%min
+   !    cp_max = seg%max
 
-      call self%bmp%add(cp_min, cp_max)
+   !    call self%bmp%add(cp_min, cp_max)
 
-      if (cp_max > BMP_SIZE_BIT) then
-         allocate(self%sps(1))
-         self%sps(1)%min = max(cp_min, BMP_SIZE_BIT)
-         self%sps(1)%max = cp_max
-      end if
+   !    if (cp_max > BMP_SIZE_BIT) then
+   !       allocate(self%sps(1))
+   !       self%sps(1)%min = max(cp_min, BMP_SIZE_BIT)
+   !       self%sps(1)%max = cp_max
+   !    end if
       
 
-   end subroutine cube_init__from_segment
+   ! end subroutine cube_init__from_segment
 
 
-   pure subroutine cube_init__from_segment_list(self, seglist)
-      implicit none
-      class(cube_t), intent(inout) :: self
-      type(segment_t), intent(in) :: seglist(:)
+   ! pure subroutine cube_init__from_segment_list(self, seglist)
+   !    implicit none
+   !    class(cube_t), intent(inout) :: self
+   !    type(segment_t), intent(in) :: seglist(:)
 
-      integer :: cp_min, cp_max
-      integer :: siz_list, i, j
+   !    integer :: cp_min, cp_max
+   !    integer :: siz_list, i, j
 
-      type(segment_t), allocatable :: tmp(:)
+   !    type(segment_t), allocatable :: tmp(:)
 
-      siz_list = size(seglist, dim=1)
+   !    siz_list = size(seglist, dim=1)
 
-      if (any(seglist == SEG_EPSILON)) then
-         self%epsilon_flag = .true.
-      end if
+   !    if (any(seglist == SEG_EPSILON)) then
+   !       self%epsilon_flag = .true.
+   !    end if
 
-      allocate(tmp(siz_list))
+   !    allocate(tmp(siz_list))
       
-      j = 0
-      do i = 1, siz_list
-         cp_min = seglist(i)%min
-         cp_max = seglist(i)%max
+   !    j = 0
+   !    do i = 1, siz_list
+   !       cp_min = seglist(i)%min
+   !       cp_max = seglist(i)%max
 
-         call self%bmp%add(cp_min, cp_max)
+   !       call self%bmp%add(cp_min, cp_max)
 
-         if (cp_max > BMP_SIZE_BIT) then
-            j = j + 1
-            tmp(j) = segment_t(max(cp_min, BMP_SIZE_BIT), cp_max)
-         end if
-      enddo
-      if (allocated(self%sps)) deallocate(self%sps)
+   !       if (cp_max > BMP_SIZE_BIT) then
+   !          j = j + 1
+   !          tmp(j) = segment_t(max(cp_min, BMP_SIZE_BIT), cp_max)
+   !       end if
+   !    enddo
+   !    if (allocated(self%sps)) deallocate(self%sps)
 
-      if (j /= 0) then
-         allocate(self%sps(j))
-         self%sps(1:j) = tmp(1:j)
-      end if
+   !    if (j /= 0) then
+   !       allocate(self%sps(j))
+   !       self%sps(1:j) = tmp(1:j)
+   !    end if
 
-   end subroutine cube_init__from_segment_list
+   ! end subroutine cube_init__from_segment_list
 
 
    pure subroutine cube_add__symbol(self, symbol)
@@ -220,6 +220,11 @@ contains
       integer :: cp_min, cp_max, sps_size, i, j
       type(segment_t), allocatable :: tmp(:)
       type(segment_t) :: what_to_add
+
+      if (segment == SEG_EPSILON) then
+         call self%flag_epsilon()
+         return
+      end if
 
       cp_min = segment%min
       cp_max = segment%max
@@ -270,6 +275,8 @@ contains
       if (any(seglist == SEG_EPSILON)) then
          self%epsilon_flag = .true.
       end if
+
+      ! write(0,*) "L274: ", SEG_EPSILON .in. seglist
 
       siz = m + n
       allocate(tmp(n))
