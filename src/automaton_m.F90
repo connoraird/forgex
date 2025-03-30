@@ -82,6 +82,7 @@ contains
       end if
 
       call init_state_set(self%entry_set, self%nfa%top)
+
       ! Constructing a DFA initial state from the NFA initial state.
       call add_nfa_state(self%entry_set, self%nfa_entry)
 
