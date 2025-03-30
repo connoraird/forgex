@@ -44,7 +44,7 @@ module forgex_automaton_m
       procedure :: get_reachable   => automaton__compute_reachable_state
       procedure :: move            => automaton__move
       procedure :: destination     => automaton__destination
-      procedure :: free            => automaton__deallocate
+      ! procedure :: free            => automaton__deallocate
       procedure :: print           => automaton__print_info
       procedure :: print_dfa       => automaton__print_dfa
    end type automaton_t
@@ -102,18 +102,18 @@ contains
    end subroutine automaton__initialize
 
 
-   pure subroutine automaton__deallocate(self)
-      implicit none
-      class(automaton_t), intent(inout) :: self
+   ! pure subroutine automaton__deallocate(self)
+   !    implicit none
+   !    class(automaton_t), intent(inout) :: self
 
-      call self%dfa%free()
-      call self%nfa%free()
+   !    call self%dfa%free()
+   !    call self%nfa%free()
 
-      if (allocated(self%dfa%nodes)) deallocate(self%dfa%nodes)
-      if (allocated(self%nfa%graph)) deallocate(self%nfa%graph)
-      if (allocated(self%cube%sps)) deallocate(self%cube%sps)
+   !    if (allocated(self%dfa%nodes)) deallocate(self%dfa%nodes)
+   !    if (allocated(self%nfa%graph)) deallocate(self%nfa%graph)
+   !    if (allocated(self%cube%sps)) deallocate(self%cube%sps)
 
-   end subroutine automaton__deallocate
+   ! end subroutine automaton__deallocate
 
 
    !> Compute the ε-closure for a set of NFA states.
@@ -253,20 +253,15 @@ contains
                      ! Note the implicit reallocation.
                      ! segs = n_tra%c
 
-                     cube = self%nfa%graph(i)%forward(j)%c
-
                      ! If the symbol is in the segment list `segs` or if the segment is epsilon,
                      ! if ( symbol_to_segment(symbol) .in. segs) then
-                     if (symbol .in. cube) then
+                     if (symbol .in. self%nfa%graph(i)%forward(j)%c) then
       
                         ! Add the index of the NFA state node to `state_set` of type(nfa_state_set_t).
                         call add_nfa_state(state_set, self%nfa%graph(i)%forward(j)%dst)
 
                      end if
-                     
-                     ! Forgut all information in cube.
-                     call cube%erase()
-
+      
                   ! end do inner
 
                end if

@@ -49,7 +49,7 @@ module forgex_lazy_dfa_node_m
       procedure :: add_transition    => dfa_state_node__add_transition
       procedure :: realloc_f         => dfa_state_node__reallocate_transition_forward
       procedure :: is_registered_tra => dfa_state_node__is_registered_transition
-      procedure :: free              => dfa_state_node__deallocate
+      ! procedure :: free              => dfa_state_node__deallocate
    end type dfa_state_node_t
 
 contains

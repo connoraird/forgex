@@ -39,7 +39,7 @@ module forgex_nfa_node_m
    contains
       procedure :: add_transition => nfa__add_transition
       procedure :: realloc_forward => nfa__reallocate_transition_forward
-      procedure :: free => nfa__deallocate
+      ! procedure :: free => nfa__deallocate
       procedure :: merge_segment => nfa__merge_segments_of_transition
    end type nfa_state_node_t
 
@@ -118,19 +118,19 @@ contains
    end subroutine nfa__reallocate_transition_forward
 
 
-   pure subroutine nfa__deallocate(self)
-      implicit none
-      class(nfa_state_node_t), intent(inout) :: self
+   ! pure subroutine nfa__deallocate(self)
+   !    implicit none
+   !    class(nfa_state_node_t), intent(inout) :: self
 
-      integer :: i
+   !    integer :: i
 
-      if (allocated(self%forward)) then
-         do i = 1, size(self%forward, dim=1) 
-            call self%forward(i)%c%free
-         end do
-      end if
-      if (allocated(self%forward)) deallocate(self%forward)
-   end subroutine nfa__deallocate
+   !    if (allocated(self%forward)) then
+   !       do i = 1, size(self%forward, dim=1) 
+   !          call self%forward(i)%c%free
+   !       end do
+   !    end if
+   !    if (allocated(self%forward)) deallocate(self%forward)
+   ! end subroutine nfa__deallocate
 
 
    pure elemental subroutine nfa__merge_segments_of_transition(self)

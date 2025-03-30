@@ -31,7 +31,7 @@ module forgex_lazy_dfa_graph_m
       procedure :: preprocess     => lazy_dfa__preprocess
       procedure :: registered     => lazy_dfa__registered_index
       procedure :: add_transition => lazy_dfa__add_transition
-      procedure :: free           => lazy_dfa__deallocate
+      ! procedure :: free           => lazy_dfa__deallocate
       procedure :: reallocate     => lazy_dfa__reallocate
    end type dfa_graph_t
 
@@ -103,17 +103,17 @@ contains
 
    !> This subroutine performs deallocation of the arrays representing 
    !> the DFA node transitions for every node in the DFA graph.
-   pure subroutine lazy_dfa__deallocate(self)
-      implicit none
-      class(dfa_graph_t), intent(inout) :: self
+   ! pure subroutine lazy_dfa__deallocate(self)
+   !    implicit none
+   !    class(dfa_graph_t), intent(inout) :: self
 
-      integer :: i
-      if (.not. allocated(self%nodes)) return
-      do i = 1, self%dfa_limit
-         call self%nodes(i)%free()
-      end do
+   !    integer :: i
+   !    if (.not. allocated(self%nodes)) return
+   !    do i = 1, self%dfa_limit
+   !       call self%nodes(i)%free()
+   !    end do
 
-   end subroutine lazy_dfa__deallocate
+   ! end subroutine lazy_dfa__deallocate
 
 
    ! DFA状態がすでに登録されているかを、添字で返す。登録されていなければDFA_INVALID_INDEXを返す。
