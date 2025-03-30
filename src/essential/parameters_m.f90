@@ -38,6 +38,8 @@ module forgex_parameters_m
    integer(int32), parameter :: SEGMENT_REGISTERED = 0
    integer(int32), parameter :: SEGMENT_REJECTED = 1
 
+   integer(int32), parameter :: INVALID_CODE_POINT = -1
+
    ! For handling UTF-8
    integer(int32), parameter, public :: UTF8_CODE_MAX     = 1114111 ! = 0x10ffff
    ! integer(int32), parameter, public :: UTF8_CODE_UPPER_BOUND = 2**21-1 ! = 0x1fffff

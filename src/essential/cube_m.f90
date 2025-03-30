@@ -11,10 +11,10 @@
 #endif
 module forgex_cube_m
    use, intrinsic :: iso_fortran_env, only: int64, int32
-   use :: forgex_parameters_m, only: BMP_SIZE, BMP_SIZE_BIT, bits_64
+   use :: forgex_parameters_m, only: BMP_SIZE, BMP_SIZE_BIT, bits_64, INVALID_CODE_POINT
    use :: forgex_bitmap_m, only: bmp_t
    use :: forgex_segment_m, only: segment_t, symbol_to_segment, &
-      operator(.in.), SEG_INIT, SEG_EPSILON, operator(==)
+      operator(.in.), SEG_INIT, SEG_EPSILON, operator(==), width_of_segment
    use :: forgex_utf8_m, only: ichar_utf8
    implicit none
    private
@@ -26,13 +26,16 @@ module forgex_cube_m
       type(segment_t), allocatable :: sps(:) ! for U+10000 .. U+10FFFF SPs (SIP, SMP, etc.)
    contains
       procedure :: flag_epsilon => cube_flag__epsilon
-      procedure :: is_flaged_epsilon => cube_flag__is_flaged_epsilon
+      procedure :: is_flagged_epsilon => cube_flag__is_flagged_epsilon
       procedure :: cube_add__symbol
       procedure :: cube_add__segment
       procedure :: cube_add__segment_list
       procedure :: cube_add__cube
       procedure :: cube2seg => cube__bmp2seg
       procedure :: print_sps => cube__dump_sps
+      procedure :: invert => cube__invert
+      procedure :: num => cube__number_of_flagged_bits
+      procedure :: first => cube__first_codepoint
       generic :: add => cube_add__symbol, cube_add__segment, cube_add__segment_list, cube_add__cube
    end type cube_t
 
@@ -111,11 +114,11 @@ contains
       self%epsilon_flag = .true.
    end subroutine cube_flag__epsilon
 
-   pure logical function cube_flag__is_flaged_epsilon(self)
+   pure logical function cube_flag__is_flagged_epsilon(self)
       implicit none
       class(cube_t), intent(in) :: self
-      cube_flag__is_flaged_epsilon = self%epsilon_flag
-   end function cube_flag__is_flaged_epsilon
+      cube_flag__is_flagged_epsilon = self%epsilon_flag
+   end function cube_flag__is_flagged_epsilon
 
 !=====================================================================!
 
@@ -158,21 +161,24 @@ contains
 
          what_to_add = segment_t(max(cp_min, BMP_SIZE_BIT), cp_max)
 
-         sps_size = size(self%sps, dim=1) + 1
-      
-         allocate(tmp(sps_size))
-         j = 0
-         do i = 1, size(self%sps)
-            j = j + 1
-            if (self%sps(i)%min < what_to_add%min) then
-               tmp(j) = self%sps(i)
-            else
-               tmp(j) = what_to_add
-            end if
-         end do
+         if (allocated(self%sps)) then
+            sps_size = size(self%sps, dim=1) + 1
+            allocate(tmp(sps_size))
+            j = 0
+            do i = 1, size(self%sps)
+               j = j + 1
+               if (self%sps(i)%min < what_to_add%min) then
+                  tmp(j) = self%sps(i)
+               else
+                  tmp(j) = what_to_add
+               end if
+            end do
+            self%sps = tmp(1:sps_size) ! implicit reallocation
 
-         self%sps = tmp(1:sps_size) ! implicit reallocation
-
+         else
+            self%sps = [segment]
+         end if
+   
       end if
 
    end subroutine cube_add__segment
@@ -187,7 +193,8 @@ contains
 
       type(segment_t), allocatable :: tmp(:), ret(:)
       type(segment_t) :: what_to_add
-      
+
+
       if (allocated(self%sps)) then
          m = size(self%sps)
       else
@@ -249,10 +256,66 @@ contains
          self%bmp%b(i) = ior(self%bmp%b(i), cube%bmp%b(i))
       end do
 
-      call cube_add__segment_list(self, cube%sps)
+      if (allocated(cube%sps)) then
+         call cube_add__segment_list(self, cube%sps)
+      end if
 
    end subroutine cube_add__cube
 
+
+   pure subroutine cube__invert(self)
+      implicit none
+      class(cube_t), intent(inout) :: self
+
+      self%bmp%b(:) = not(self%bmp%b(:))
+
+      if (.not. allocated(self%sps)) return
+
+      ! ### NOT IMPLEMENTED SPS INVERTION PROCESS ### ! 
+
+   end subroutine cube__invert
+
+
+   pure function cube__number_of_flagged_bits(self) result(ret)
+      implicit none
+      class(cube_t), intent(in) :: self
+      integer :: ret
+
+      integer :: i
+
+      ret = 0
+      do i = 0, BMP_SIZE-1
+         ret = ret + popcnt(self%bmp%b(i))
+      end do
+      
+      if (allocated(self%sps)) then
+         do i = 1, size(self%sps)
+            ret = ret + width_of_segment(self%sps(i))
+         end do
+      end if
+
+   end function cube__number_of_flagged_bits
+
+
+   pure function cube__first_codepoint(self) result(ret)
+      implicit none
+      class(cube_t), intent(in) :: self
+
+      integer :: i, num, pos, ret
+
+      do i = 0, BMP_SIZE-1
+         if (self%bmp%b(i) /= 0) then
+            pos = trailz(self%bmp%b(i))
+            ret = i*bits_64 + pos
+            return
+         end if
+      end do
+
+      ret = INVALID_CODE_POINT
+   end function cube__first_codepoint
+
+
+!=====================================================================!
 
    pure subroutine cube__bmp2seg(self, segments)
       implicit none

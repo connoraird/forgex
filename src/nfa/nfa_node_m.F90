@@ -37,7 +37,8 @@ module forgex_nfa_node_m
       integer(int32) :: forward_top = 1
       integer(int32) :: alloc_count_f = ALLOC_COUNT_INITTIAL
    contains
-      procedure :: add_transition => nfa__add_transition
+      procedure :: nfa__add_transition, nfa__add_transition_cube
+      generic :: add_transition => nfa__add_transition, nfa__add_transition_cube
       procedure :: realloc_forward => nfa__reallocate_transition_forward
       procedure :: merge_segment => nfa__merge_segments_of_transition
    end type nfa_state_node_t
@@ -82,6 +83,40 @@ contains
       if (j == self%forward_top) self%forward_top = self%forward_top + 1
 
    end subroutine nfa__add_transition
+
+
+   pure subroutine nfa__add_transition_cube(self, src, dst, cube)
+      implicit none
+      class(nfa_state_node_t), intent(inout) :: self
+      integer(int32), intent(in) :: src, dst
+      type(cube_t), intent(in) :: cube
+
+      integer :: j, k
+
+      j = NFA_NULL_TRANSITION
+      if (allocated(self%forward)) then
+         do k = 1, self%forward_top
+            if (dst==self%forward(k)%dst) then
+               j = k
+            end if
+         end do
+      end if
+
+      if (j == NFA_NULL_TRANSITION) then
+         j = self%forward_top
+      end if
+
+      if (.not. allocated(self%forward)) then
+         call self%realloc_forward()
+      end if
+
+      call self%forward(j)%c%add(cube)
+      self%forward(j)%dst = dst
+      self%forward(j)%is_registered = .true.
+
+      if (j==self%forward_top) self%forward_top = self%forward_top + 1
+
+   end subroutine nfa__add_transition_cube
 
 
    pure subroutine nfa__reallocate_transition_forward (self)

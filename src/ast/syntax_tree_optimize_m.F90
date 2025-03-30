@@ -79,6 +79,7 @@ contains
       integer :: i
 
       curr = nodes(idx)
+      curr%c = nodes(idx)%c
       lit%all%c = theta
       lit%pref%c = theta
       lit%suff%c = theta
@@ -183,21 +184,16 @@ contains
          lit%flag_closure = .true.
 
       case (op_char)
-         if (allocated(curr%c)) then
-            if (size(curr%c) == 1) then
-               if (width_of_segment(curr%c(1)) == 1) then
-                  lit%all%c = char_utf8(curr%c(1)%min)
-                  lit%pref%c = char_utf8(curr%c(1)%min)
-                  lit%suff%c =  char_utf8(curr%c(1)%min)
-                  lit%fact%c =  char_utf8(curr%c(1)%min)
-               else
-                  lit%flag_class = .true.
-               end if
-            else
-               lit%flag_class = .true.
-            end if
-
+         if (curr%c%num() == 1) then
+            
+            lit%all%c = char_utf8(curr%c%first())
+            lit%pref%c = char_utf8(curr%c%first())
+            lit%suff%c =  char_utf8(curr%c%first())
+            lit%fact%c =  char_utf8(curr%c%first())
+         else
+            lit%flag_class = .true.
          end if
+
       case (op_repeat)
          block
             type(tree_node_t) :: next_l

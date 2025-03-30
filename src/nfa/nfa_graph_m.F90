@@ -101,7 +101,7 @@ contains
       call self%new_nfa_node()
       exit_i = self%top
 
-      call generate_nfa(tree, tree%top, self, entry_i, exit_i)
+      call generate_nfa(tree, tree%top, self, entry_i, exit_i)  ! ~0.8ms TOO SLOW
 
       do i = 1, self%top
          call self%graph(i)%merge_segment()
@@ -131,7 +131,7 @@ contains
 
          if (dst == NFA_NULL_TRANSITION) cycle
 
-         if (self%graph(idx)%forward(j)%c%is_flaged_epsilon() .and. &
+         if (self%graph(idx)%forward(j)%c%is_flagged_epsilon() .and. &
             .not. check_nfa_state(state_set, dst)) then
 
             if (dst /= NFA_NULL_TRANSITION) then
@@ -326,7 +326,7 @@ contains
             if (.not. allocated(self%graph(i)%forward)) cycle
 
             ! transition = self%graph(i)%forward(j)
-            if (self%graph(i)%forward(j)%c%is_flaged_epsilon()) then
+            if (self%graph(i)%forward(j)%c%is_flagged_epsilon()) then
                write(uni, '(a,a,a2,i0,a1)', advance='no') "(", "?", ", ", self%graph(i)%forward(j)%dst, ")"
             end if
 
@@ -368,9 +368,6 @@ contains
 
       select case(tree%nodes(i)%op)
       case (op_char)
-         if (.not. allocated(tree%nodes(i)%c)) then
-            error stop "ERROR: Character node of the AST do not have actual character list."
-         end if
          ! Handle character operations by adding transition for each character.
          call nfa%graph(entry_i)%add_transition(entry_i, exit_i, tree%nodes(i)%c)
       
@@ -444,6 +441,7 @@ contains
       case default ! for case (op_not_init)
          ! Handle unexpected cases.
          error stop "This will not heppen in 'generate_nfa'."
+         ! error stop tree%nodes(i)%op
       end select
    end subroutine generate_nfa
 

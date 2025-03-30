@@ -31,7 +31,6 @@ module forgex_automaton_m
       type(nfa_graph_t)            :: nfa
       type(dfa_graph_t)            :: dfa
       type(nfa_state_set_t)        :: entry_set
-      ! type(segment_t), allocatable :: all_segments(:)
       type(cube_t)                 :: cube
       integer(int32)               :: nfa_entry, nfa_exit
       integer(int32)               :: initial_index = DFA_NOT_INIT
@@ -59,7 +58,7 @@ contains
       self%tree = tree
       !-- NFA building
       call self%nfa%build(tree, self%nfa_entry, self%nfa_exit, self%cube)
-      ! call self%nfa%build(tree, self%nfa_entry, self%nfa_exit, self%all_segments)
+
    end subroutine automaton__build_nfa
 
    !> This subroutine reads `tree` and `tree_top` variable, constructs the NFA graph,
@@ -136,7 +135,7 @@ contains
          if (dst == NFA_NULL_TRANSITION) cycle
 
          ! if (any(self%nfa%graph(n_index)%forward(j)%c%sps == SEG_EPSILON) &
-         if (self%nfa%graph(n_index)%forward(j)%c%is_flaged_epsilon() &
+         if (self%nfa%graph(n_index)%forward(j)%c%is_flagged_epsilon() &
          .and. .not. check_nfa_state(closure, dst)) then
 
             if (dst /= NFA_NULL_TRANSITION) then

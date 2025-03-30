@@ -91,6 +91,8 @@ contains
          pe = mod(max_cp, bits_64)
       end if
 
+      if (ib > BMP_SIZE-1 .or. ie > BMP_SIZE-1) return
+
       c1 = self%b(ib)
       c2 = self%b(ie)
 

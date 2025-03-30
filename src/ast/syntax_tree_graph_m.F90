@@ -549,9 +549,9 @@ contains
       end if
 
       node = make_tree_node(op_char)
-      if (.not. allocated(node%c)) allocate(node%c(size(seglist, dim=1)))
+      ! if (.not. allocated(node%c)) allocate(node%c(size(seglist, dim=1)))
 
-      node%c(:) = seglist(:)
+      call node%c%add(seglist(:))
 
       call self%register_connector(node, terminal, terminal)
 
@@ -641,49 +641,67 @@ contains
          return
 
       case (ESCAPE_D_CAPITAL)
-         allocate(seglist(1))
-         seglist(1) = SEG_DIGIT
-         call invert_segment_list(seglist)
+         call node%c%add(SEG_DIGIT)
+         call node%c%invert()
+         ! allocate(seglist(1))
+         ! seglist(1) = SEG_DIGIT
+         ! call invert_segment_list(seglist)
 
       case (ESCAPE_W)
-         allocate(seglist(4))
-         seglist(1) = SEG_LOWERCASE
-         seglist(2) = SEG_UPPERCASE
-         seglist(3) = SEG_DIGIT
-         seglist(4) = SEG_UNDERSCORE
+         call node%c%add(SEG_LOWERCASE)
+         call node%c%add(SEG_UNDERSCORE)
+         call node%c%add(SEG_DIGIT)
+         call node%c%add(SEG_UNDERSCORE)
+
+         ! allocate(seglist(4))
+         ! seglist(1) = SEG_LOWERCASE
+         ! seglist(2) = SEG_UPPERCASE
+         ! seglist(3) = SEG_DIGIT
+         ! seglist(4) = SEG_UNDERSCORE
 
       case (ESCAPE_W_CAPITAL)
-         allocate(seglist(4))
-         seglist(1) = SEG_LOWERCASE
-         seglist(2) = SEG_UPPERCASE
-         seglist(3) = SEG_DIGIT
-         seglist(4) = SEG_UNDERSCORE
-         call invert_segment_list(seglist)
+         call node%c%add(SEG_LOWERCASE)
+         call node%c%add(SEG_UNDERSCORE)
+         call node%c%add(SEG_DIGIT)
+         call node%c%add(SEG_UNDERSCORE)
+         call node%c%invert()
+         ! allocate(seglist(4))
+         ! seglist(1) = SEG_LOWERCASE
+         ! seglist(2) = SEG_UPPERCASE
+         ! seglist(3) = SEG_DIGIT
+         ! seglist(4) = SEG_UNDERSCORE
+         ! call invert_segment_list(seglist)
 
       case (ESCAPE_S)
-         allocate(seglist(6))
-         seglist(1) = SEG_SPACE
-         seglist(2) = SEG_TAB
-         seglist(3) = SEG_CR
-         seglist(4) = SEG_LF
-         seglist(5) = SEG_FF
-         seglist(6) = SEG_ZENKAKU_SPACE
+         call node%c%add([SEG_SPACE, SEG_TAB, SEG_CR, SEG_LF, SEG_FF, SEG_ZENKAKU_SPACE])
+
+         ! allocate(seglist(6))
+         ! seglist(1) = SEG_SPACE
+         ! seglist(2) = SEG_TAB
+         ! seglist(3) = SEG_CR
+         ! seglist(4) = SEG_LF
+         ! seglist(5) = SEG_FF
+         ! seglist(6) = SEG_ZENKAKU_SPACE
 
       case (ESCAPE_S_CAPITAL)
-         allocate(seglist(6))
-         seglist(1) = SEG_SPACE
-         seglist(2) = SEG_TAB
-         seglist(3) = SEG_CR
-         seglist(4) = SEG_LF
-         seglist(5) = SEG_FF
-         seglist(6) = SEG_ZENKAKU_SPACE
-         call invert_segment_list(seglist)
+         call node%c%add([SEG_SPACE, SEG_TAB, SEG_CR, SEG_LF, SEG_FF, SEG_ZENKAKU_SPACE])
+         call node%c%invert()
+
+         ! allocate(seglist(6))
+         ! seglist(1) = SEG_SPACE
+         ! seglist(2) = SEG_TAB
+         ! seglist(3) = SEG_CR
+         ! seglist(4) = SEG_LF
+         ! seglist(5) = SEG_FF
+         ! seglist(6) = SEG_ZENKAKU_SPACE
+         ! call invert_segment_list(seglist)
 
       case (ESCAPE_X)
          ! Error handling for x escape sequence is handled by hex2seg.
          call self%hex2seg(seglist)
          if (.not. self%is_valid) return
          ! It is not necessary to call self%tape%get_token() procedure.
+         call node%c%add(seglist)
 
       case (ESCAPE_P)
          call self%property(seglist)
@@ -703,7 +721,9 @@ contains
             SYMBOL_HYPN)
          chara = self%tape%token_char
          seg = segment_t(ichar_utf8(chara), ichar_utf8(chara))
-         node = make_atom(seg)
+         node%op = op_char
+
+         call node%c%add(seg)
          call self%register_connector(node, terminal, terminal)
          return
 
@@ -717,16 +737,16 @@ contains
          return
       end select
 
-      allocate(node%c(size(seglist, dim=1)))
+      ! allocate(node%c(size(seglist, dim=1)))
       ! This size function is safe because it is always allocated 
       ! to the non-returned branches of the select case above.
 
-      node%c(:) = seglist(:)
+      ! node%c(:) = seglist(:)
       node%op = op_char
 
       call self%register_connector(node, terminal, terminal)
 
-      deallocate(seglist)
+      ! deallocate(seglist)
 
    end subroutine tree_graph__shorthand
 
@@ -1270,6 +1290,7 @@ contains
       use, intrinsic :: iso_fortran_env, stderr => error_unit
       implicit none
       class(tree_node_t), intent(in) :: tree(:)
+      type(segment_t), allocatable :: segments(:)
 
       integer :: i, k
 
@@ -1280,17 +1301,16 @@ contains
                tree(i)%op, tree(i)%parent_i, tree(i)%left_i, tree(i)%right_i, '   ', &
                tree(i)%is_registered
 
-            if (allocated(tree(i)%c)) then
-               do k = 1, ubound(tree(i)%c, dim=1)
+            call tree(i)%c%cube2seg(segments)
+            do k = 1, ubound(segments, dim=1)
 
-                  if (k /= 1) write(stderr, '(a)', advance='no') ', '
-                   write(stderr, '(a)', advance='no') tree(i)%c(k)%print()
+               if (k /= 1) write(stderr, '(a)', advance='no') ', '
+                  write(stderr, '(a)', advance='no') segments(k)%print()
                                  
-               end do
-               write(stderr, *) ""
-            else
-               write(stderr, *) " "
-            end if
+            end do
+            write(stderr, *) ""
+         else
+            write(stderr, *) " "
          end if
       end do
    end subroutine dump_tree_table
@@ -1361,6 +1381,8 @@ contains
       use :: forgex_utf8_m
       implicit none
       type(tree_node_t), intent(in) :: tree(:)
+      
+      type(segment_t), allocatable :: segments(:)
       integer(int32) :: root_i
       character(:), allocatable :: str
 
@@ -1368,31 +1390,34 @@ contains
       character(:),allocatable :: buf
 
       str = ''
-      if (allocated(tree(root_i)%c)) then
-         siz = size(tree(root_i)%c, dim=1)
+
+      call tree(root_i)%c%cube2seg(segments)
+
+      if (allocated(segments)) then
+         siz = size(segments, dim=1)
       else
          return
       end if
 
       if (siz == 0) return
 
-      if (tree(root_i)%c(1) == SEG_LF) then
+      if (segments(1) == SEG_LF) then
          str = '<LF>'
          return
 
-      else if (tree(root_i)%c(1) == SEG_CR) then
+      else if (segments(1) == SEG_CR) then
          str = '<CR>'
          return
 
-      else if (tree(root_i)%c(1) == SEG_EMPTY) then
+      else if (segments(1) == SEG_EMPTY) then
          str ="<EMPTY>"
          return
 
-      else if (siz == 1 .and. tree(root_i)%c(1)%min == tree(root_i)%c(1)%max) then
-         str = '"'//char_utf8(tree(root_i)%c(1)%min)//'"'
+      else if (siz == 1 .and. segments(1)%min == segments(j)%max) then
+         str = '"'//char_utf8(segments(1)%min)//'"'
          return
 
-      else if (siz == 1 .and. tree(root_i)%c(1) == SEG_ANY) then
+      else if (siz == 1 .and. segments(1) == SEG_ANY) then
          str = '<ANY>'
          return
       end if
@@ -1400,29 +1425,29 @@ contains
       buf = '[ '
       do j = 1, siz
 
-         if (tree(root_i)%c(j) == SEG_LF) then
+         if (segments(j) == SEG_LF) then
             buf = buf//'<LF>; '
 
-         else if (tree(root_i)%c(j) == SEG_TAB) then
+         else if (segments(j) == SEG_TAB) then
             buf = buf//'<TAB>; '
 
-         else if (tree(root_i)%c(j) == SEG_CR) then
+         else if (segments(j) == SEG_CR) then
             buf = buf//'<CR>; '
 
-         else if (tree(root_i)%c(j) == SEG_FF) then
+         else if (segments(j) == SEG_FF) then
             buf = buf//'<FF>; '
 
-         else if (tree(root_i)%c(j) == SEG_SPACE) then
+         else if (segments(j) == SEG_SPACE) then
             buf = buf//'<SPACE>; '
 
-         else if (tree(root_i)%c(j) == SEG_ZENKAKU_SPACE) then
+         else if (segments(j) == SEG_ZENKAKU_SPACE) then
             buf = buf//'<ZENKAKU SPACE>; '
 
-         else if (tree(root_i)%c(j)%max == UTF8_CODE_MAX) then
-            buf = buf//'"'//char_utf8(tree(root_i)%c(j)%min)//'"-"'//"<U+1FFFFF>"//'; '
+         else if (segments(j)%max == UTF8_CODE_MAX) then
+            buf = buf//'"'//char_utf8(segments(j)%min)//'"-"'//"<U+1FFFFF>"//'; '
 
          else
-            buf = buf//'"'//char_utf8(tree(root_i)%c(j)%min)//'"-"'//char_utf8(tree(root_i)%c(j)%max)//'"; '
+            buf = buf//'"'//char_utf8(segments(j)%min)//'"-"'//char_utf8(segments(j)%max)//'"; '
          end if
       end do
 
