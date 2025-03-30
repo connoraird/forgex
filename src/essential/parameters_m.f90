@@ -123,7 +123,7 @@ module forgex_parameters_m
 
    !> This constant defines the unit of reallocation for the array representing
    !> a DFA graph.
-   integer(int32), parameter, public :: DFA_STATE_UNIT = 16
+   integer(int32), parameter, public :: DFA_STATE_UNIT = 32
 
    !> This constant is provided to define the upper limit of DFA nodes,
    !> but is currently only used to define DFA_STATE_HARD_LIMIT.
