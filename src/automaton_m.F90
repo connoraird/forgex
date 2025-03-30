@@ -31,7 +31,8 @@ module forgex_automaton_m
       type(nfa_graph_t)            :: nfa
       type(dfa_graph_t)            :: dfa
       type(nfa_state_set_t)        :: entry_set
-      type(segment_t), allocatable :: all_segments(:)
+      ! type(segment_t), allocatable :: all_segments(:)
+      type(cube_t)                 :: cube
       integer(int32)               :: nfa_entry, nfa_exit
       integer(int32)               :: initial_index = DFA_NOT_INIT
    contains
@@ -58,7 +59,8 @@ contains
 
       self%tree = tree
       !-- NFA building
-      call self%nfa%build(tree, self%nfa_entry, self%nfa_exit, self%all_segments)
+      call self%nfa%build(tree, self%nfa_entry, self%nfa_exit, self%cube)
+      ! call self%nfa%build(tree, self%nfa_entry, self%nfa_exit, self%all_segments)
    end subroutine automaton__build_nfa
 
    !> This subroutine reads `tree` and `tree_top` variable, constructs the NFA graph,
@@ -79,11 +81,11 @@ contains
          error stop "DFA graph initialization is failed."
       end if
 
-      call init_state_set(self%entry_set, self%nfa%nfa_top)
+      call init_state_set(self%entry_set, self%nfa%top)
       ! Constructing a DFA initial state from the NFA initial state.
       call add_nfa_state(self%entry_set, self%nfa_entry)
 
-      call init_state_set(initial_closure, self%nfa%nfa_top)
+      call init_state_set(initial_closure, self%nfa%top)
       initial_closure = self%entry_set
       ! Add an NFA node reachable by epsilon transitions to the entrance state set within DFA.
       call self%epsilon_closure(initial_closure, self%nfa_entry)
@@ -108,8 +110,8 @@ contains
       call self%nfa%free()
 
       if (allocated(self%dfa%nodes)) deallocate(self%dfa%nodes)
-      if (allocated(self%nfa%nodes)) deallocate(self%nfa%nodes)
-      if (allocated(self%all_segments)) deallocate(self%all_segments)
+      if (allocated(self%nfa%graph)) deallocate(self%nfa%graph)
+      if (allocated(self%cube%sps)) deallocate(self%cube%sps)
 
    end subroutine automaton__deallocate
 
@@ -131,7 +133,7 @@ contains
 
       call add_nfa_state(closure, n_index)
 
-      n_node = self%nfa%nodes(n_index)
+      n_node = self%nfa%graph(n_index)
 
       if (.not. allocated(n_node%forward)) return
 
@@ -140,9 +142,9 @@ contains
          ! 一時変数にコピー
          n_tra = n_node%forward(j)
 
-         if (.not. allocated(n_tra%c)) cycle
+         if (.not. allocated(n_tra%c%sps)) cycle
 
-         if (any(n_tra%c == SEG_EPSILON) .and. .not. check_nfa_state(closure, n_tra%dst)) then
+         if (any(n_tra%c%sps == SEG_EPSILON) .and. .not. check_nfa_state(closure, n_tra%dst)) then
             if (n_tra%dst /= NFA_NULL_TRANSITION) call self%epsilon_closure(closure, n_tra%dst)
          end if
 
@@ -216,18 +218,18 @@ contains
       type(nfa_transition_t)       :: n_tra
       type(cube_t) :: cube
 
-      call init_state_set(state_set, self%nfa%nfa_top)
+      call init_state_set(state_set, self%nfa%top)
 
       current_set = self%dfa%nodes(curr_i)%nfa_set
 
       ! Scan the entire NFA states.
-      outer: do i = 1, self%nfa%nfa_top
+      outer: do i = 1, self%nfa%top
 
          ! If the i-th element of current state set is true, process the i-th NFA node.
          if (check_nfa_state(current_set, i)) then
 
             ! Copy to a temporary variable.
-            n_node = self%nfa%nodes(i)
+            n_node = self%nfa%graph(i)
 
             if (.not. allocated(n_node%forward)) cycle
 
@@ -242,13 +244,13 @@ contains
                if (n_tra%dst /= NFA_NULL_TRANSITION) then
 
                   ! Investigate the all of segments which transition has.
-                  inner: do k = 1, n_tra%c_top
+                  ! inner: do k = 1, size(n_tra%c%sps)
 
                      ! Copy to a temporary variable fo type(segment_t).
                      ! Note the implicit reallocation.
-                     segs = n_tra%c
+                     ! segs = n_tra%c
 
-                     call cube%add(n_tra%c)
+                     cube = n_tra%c
 
                      ! If the symbol is in the segment list `segs` or if the segment is epsilon,
                      ! if ( symbol_to_segment(symbol) .in. segs) then
@@ -262,7 +264,7 @@ contains
                      ! Forgut all information in cube.
                      call cube%erase()
 
-                  end do inner
+                  ! end do inner
 
                end if
 
