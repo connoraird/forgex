@@ -1,3 +1,11 @@
+! Fortran Regular Expression (Forgex)
+!
+! MIT License
+!
+! (C) Amasaki Shinobu, 2023-2025
+!     A regular expression engine for Fortran.
+!     forgex_bitmap_m module is a part of Forgex.
+!
 #ifdef IMPURE
 #define pure
 #endif
@@ -147,7 +155,6 @@ contains
 
       allocate(segments(k))
       segments(:) = tmp(1:k)
-      deallocate(tmp)
 
    end subroutine bmp2seg
 

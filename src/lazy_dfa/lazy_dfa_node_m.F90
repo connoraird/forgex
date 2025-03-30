@@ -49,7 +49,6 @@ module forgex_lazy_dfa_node_m
       procedure :: add_transition    => dfa_state_node__add_transition
       procedure :: realloc_f         => dfa_state_node__reallocate_transition_forward
       procedure :: is_registered_tra => dfa_state_node__is_registered_transition
-      ! procedure :: free              => dfa_state_node__deallocate
    end type dfa_state_node_t
 
 contains
@@ -73,15 +72,6 @@ contains
 
       self%tra_top = top
    end subroutine dfa_state_node__initialize_transition_top
-
-
-   !> This subroutine deallocates the transition array of a DFA state node.
-   pure subroutine dfa_state_node__deallocate(self)
-      implicit none
-      class(dfa_state_node_t), intent(inout) :: self
-
-      if (allocated(self%transition)) deallocate(self%transition)
-   end subroutine dfa_state_node__deallocate
 
 
    !> This subroutine increments the value of top transition index.

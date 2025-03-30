@@ -33,7 +33,6 @@ module forgex_nfa_graph_m
       procedure :: is_exceeded => nfa_graph__is_exceeded
       procedure :: reallocate => nfa_graph__reallocate
       procedure :: build => nfa_graph__build
-      ! procedure :: free => nfa_graph__deallocate
       procedure :: collect_epsilon_transition => nfa_graph__collect_epsilon_transition
       procedure :: mark_epsilon_transition => nfa_graph__mark_epsilon_transition
       procedure :: disjoin => nfa_graph__disjoin
@@ -76,20 +75,6 @@ contains
 
       self%graph(n+1:n*2)%forward_top = 1
    end subroutine nfa_graph__reallocate
-
-
-   ! pure subroutine nfa_graph__deallocate(self)
-   !    implicit none
-   !    class(nfa_graph_t), intent(inout) :: self
-   !    integer :: i
-   
-   !    ! do i = 1, ubound(self%graph, dim=1)
-   !    !    call self%graph(i)%free
-   !    ! end do
-
-   !    if (allocated(self%graph)) deallocate(self%graph)
-      
-   ! end subroutine nfa_graph__deallocate
 
 
    pure subroutine nfa_graph__build(self, tree, entry_i, exit_i, entire)
@@ -172,6 +157,7 @@ contains
          end if
       end do
    end subroutine nfa_graph__collect_epsilon_transition
+
 
    pure subroutine nfa_graph__disjoin(self, cube)
       use :: forgex_priority_queue_m, only : priority_queue_t

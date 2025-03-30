@@ -1,3 +1,11 @@
+! Fortran Regular Expression (Forgex)
+!
+! MIT License
+!
+! (C) Amasaki Shinobu, 2023-2025
+!     A regular expression engine for Fortran.
+!     forgex_cube_m module is a part of Forgex.
+!
 #ifdef IMPURE
 #define pure
 #endif
@@ -19,17 +27,12 @@ module forgex_cube_m
    contains
       procedure :: flag_epsilon => cube_flag__epsilon
       procedure :: is_flaged_epsilon => cube_flag__is_flaged_epsilon
-      ! procedure :: cube_init__from_bmp
-      ! procedure :: cube_init__from_segment
-      ! procedure :: cube_init__from_segment_list
       procedure :: cube_add__symbol
       procedure :: cube_add__segment
       procedure :: cube_add__segment_list
       procedure :: cube_add__cube
-      procedure :: free => cube__free
       procedure :: cube2seg => cube__bmp2seg
       procedure :: print_sps => cube__dump_sps
-      ! generic :: init => cube_init__from_bmp, cube_init__from_segment_list
       generic :: add => cube_add__symbol, cube_add__segment, cube_add__segment_list, cube_add__cube
    end type cube_t
 
@@ -116,86 +119,6 @@ contains
 
 !=====================================================================!
 
-
-   ! pure subroutine cube_init__from_bmp(self, bmp)
-   !    implicit none
-   !    class(cube_t), intent(inout) :: self
-   !    type(bmp_t), intent(in) :: bmp
-
-   !    self%bmp = bmp
-
-   ! end subroutine cube_init__from_bmp
-
-
-   ! pure subroutine cube_init__from_segment(self, seg)
-   !    implicit none
-   !    class(cube_t), intent(inout) :: self
-   !    type(segment_t), intent(in) :: seg
-      
-   !    integer :: cp_min, cp_max
-
-   !    if (seg == SEG_EPSILON) then
-   !       self%epsilon_flag = .true.
-   !       return
-   !    end if
-
-   !    self%bmp = white_bmp
-
-   !    cp_min = seg%min
-   !    cp_max = seg%max
-
-   !    call self%bmp%add(cp_min, cp_max)
-
-   !    if (cp_max > BMP_SIZE_BIT) then
-   !       allocate(self%sps(1))
-   !       self%sps(1)%min = max(cp_min, BMP_SIZE_BIT)
-   !       self%sps(1)%max = cp_max
-   !    end if
-      
-
-   ! end subroutine cube_init__from_segment
-
-
-   ! pure subroutine cube_init__from_segment_list(self, seglist)
-   !    implicit none
-   !    class(cube_t), intent(inout) :: self
-   !    type(segment_t), intent(in) :: seglist(:)
-
-   !    integer :: cp_min, cp_max
-   !    integer :: siz_list, i, j
-
-   !    type(segment_t), allocatable :: tmp(:)
-
-   !    siz_list = size(seglist, dim=1)
-
-   !    if (any(seglist == SEG_EPSILON)) then
-   !       self%epsilon_flag = .true.
-   !    end if
-
-   !    allocate(tmp(siz_list))
-      
-   !    j = 0
-   !    do i = 1, siz_list
-   !       cp_min = seglist(i)%min
-   !       cp_max = seglist(i)%max
-
-   !       call self%bmp%add(cp_min, cp_max)
-
-   !       if (cp_max > BMP_SIZE_BIT) then
-   !          j = j + 1
-   !          tmp(j) = segment_t(max(cp_min, BMP_SIZE_BIT), cp_max)
-   !       end if
-   !    enddo
-   !    if (allocated(self%sps)) deallocate(self%sps)
-
-   !    if (j /= 0) then
-   !       allocate(self%sps(j))
-   !       self%sps(1:j) = tmp(1:j)
-   !    end if
-
-   ! end subroutine cube_init__from_segment_list
-
-
    pure subroutine cube_add__symbol(self, symbol)
       implicit none
       class(cube_t), intent(inout) :: self
@@ -276,8 +199,6 @@ contains
          self%epsilon_flag = .true.
       end if
 
-      ! write(0,*) "L274: ", SEG_EPSILON .in. seglist
-
       siz = m + n
       allocate(tmp(n))
       allocate(ret(siz+1))
@@ -300,7 +221,6 @@ contains
       end do
 
       p = 0
-
       joint: block
          type(segment_t), allocatable :: cache(:)
          if (allocated(self%sps)) then
@@ -315,42 +235,6 @@ contains
          return
          
       end block joint
-
-      ! merge: block
-      !    if (allocated(self%sps)) then
-      !       i = 1
-      !       j = 1
-      !       do while (i <= m .and. j <= k)
-      !          if (self%sps(i)%min < tmp(j)%min) then
-      !             p = p + 1
-      !             ret(p) = self%sps(i)
-      !             i = i + 1
-      !          else
-      !             p = p + 1
-      !             ret(p) = tmp(j)
-      !             j = j + 1
-      !          end if
-      !       end do
-
-      !       do while (i <= m .and. k <=siz)
-      !          p = p + 1
-      !          ret(p) = self%sps(i)
-      !          i = i + 1
-      !       end do
-      !       do while (j <= n .and. k <= siz)
-      !          p = p + 1
-      !          ret(p) = tmp(j)
-      !          j = j + 1; k = k + 1
-      !       end do
-      !    else
-      !       p = size(tmp, dim=1)
-      !    end if
-      ! end block merge
-
-      ! if (allocated(self%sps)) deallocate(self%sps)
-      ! allocate(self%sps(p))
-      ! self%sps(:) = ret(1:p)
-
 
    end subroutine cube_add__segment_list
 
@@ -369,12 +253,6 @@ contains
 
    end subroutine cube_add__cube
 
-   pure subroutine cube__free(self)
-      implicit none
-      class(cube_t), intent(inout) :: self
-
-      if (allocated(self%sps)) deallocate(self%sps)
-   end subroutine cube__free
 
    pure subroutine cube__bmp2seg(self, segments)
       implicit none

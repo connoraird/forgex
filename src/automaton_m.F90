@@ -44,7 +44,6 @@ module forgex_automaton_m
       procedure :: get_reachable   => automaton__compute_reachable_state
       procedure :: move            => automaton__move
       procedure :: destination     => automaton__destination
-      ! procedure :: free            => automaton__deallocate
       procedure :: print           => automaton__print_info
       procedure :: print_dfa       => automaton__print_dfa
    end type automaton_t
@@ -101,20 +100,6 @@ contains
       self%initial_index = new_index
 
    end subroutine automaton__initialize
-
-
-   ! pure subroutine automaton__deallocate(self)
-   !    implicit none
-   !    class(automaton_t), intent(inout) :: self
-
-   !    call self%dfa%free()
-   !    call self%nfa%free()
-
-   !    if (allocated(self%dfa%nodes)) deallocate(self%dfa%nodes)
-   !    if (allocated(self%nfa%graph)) deallocate(self%nfa%graph)
-   !    if (allocated(self%cube%sps)) deallocate(self%cube%sps)
-
-   ! end subroutine automaton__deallocate
 
 
    !> Compute the ε-closure for a set of NFA states.
@@ -247,18 +232,8 @@ contains
             ! Scan the all transitions belong to the NFA state node.
             middle: do j = 1, self%nfa%graph(i)%forward_top
 
-               ! Copy to a temporary variable of type(nfa_transition_t)
-               ! n_tra = self%nfa%graph(i)%forward(j)
-
-
                ! If it has a destination,
                if (self%nfa%graph(i)%forward(j)%dst /= NFA_NULL_TRANSITION) then
-
-                  ! Investigate the all of segments which transition has.
-                  ! inner: do k = 1, size(n_tra%c%sps)
-
-                     ! Copy to a temporary variable fo type(segment_t).
-                     ! Note the implicit reallocation.
 
                      ! If the symbol is in the cube on the transition forward(j).
                      if (symbol .in. self%nfa%graph(i)%forward(j)%c) then
@@ -267,8 +242,6 @@ contains
                         call add_nfa_state(state_set, self%nfa%graph(i)%forward(j)%dst)
 
                      end if
-      
-                  ! end do inner
 
                end if
 
