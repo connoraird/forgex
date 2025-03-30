@@ -385,8 +385,9 @@ contains
 
       ! 遷移を追加する
       ! Add a DFA transition from `prev` to `next` for the given `symbol`.
-      call self%dfa%add_transition(d_tra%nfa_set, prev_i, dst_i,  &
-             which_segment_symbol_belong(self%all_segments, symbol))
+      ! call self%dfa%add_transition(d_tra%nfa_set, prev_i, dst_i,  &
+      !        which_segment_symbol_belong(self%all_segments, symbol))
+      call self%dfa%add_transition(d_tra%nfa_set, prev_i, dst_i, symbol)
    end subroutine automaton__construct_dfa
 
 
@@ -400,8 +401,8 @@ contains
       class(automaton_t), intent(in) :: self
 
       write(stderr, *) "--- AUTOMATON INFO ---"
-      write(stderr, *) "entry_set: ", self%entry_set%vec(NFA_STATE_BASE+1:self%nfa%nfa_top)
-      write(stderr, *) "allocated(all_segments):", allocated(self%all_segments)
+      write(stderr, *) "entry_set: ", self%entry_set%vec(NFA_STATE_BASE+1:self%nfa%top)
+      write(stderr, *) "allocated(all_segments):", allocated(self%cube%sps)
       write(stderr, *) "nfa_entry:     ", self%nfa_entry
       write(stderr, *) "nfa_exit:      ", self%nfa_exit
       write(stderr, *) "initial_index: ", self%initial_index
@@ -417,8 +418,9 @@ contains
       class(automaton_t), intent(in) :: self
       integer(int32), intent(in) :: uni
 
+      type(segment_t), allocatable :: segments(:)
       type(dfa_transition_t) :: p
-      integer(int32) :: i, j
+      integer(int32) :: i, j, k
 
       do i = 1, self%dfa%dfa_top -1
 
@@ -430,8 +432,10 @@ contains
 
          do j = 1, self%dfa%nodes(i)%get_tra_top()
             p = self%dfa%nodes(i)%transition(j)
-            write(uni, '(a, a, i0, 1x)', advance='no') p%c%print(), '=>', p%dst
-
+            call p%c%cube2seg(segments)
+            do k = 1, size(segments)
+               write(uni, '(a, a, i0, 1x)', advance='no') segments(k)%print(), '=>', p%dst
+            end do
          end do
          write(uni, *) ""
       end do
@@ -443,7 +447,7 @@ contains
             write(uni, '(a, i4, a)', advance='no') "state ", i, '  = ( '
          end if
 
-         call print_nfa_state_set(self%dfa%nodes(i)%nfa_set, self%nfa%nfa_top, uni)
+         call print_nfa_state_set(self%dfa%nodes(i)%nfa_set, self%nfa%top, uni)
 
          write(uni,'(a)') ")"
       end do

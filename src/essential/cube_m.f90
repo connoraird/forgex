@@ -18,6 +18,7 @@ module forgex_cube_m
       procedure :: cube_init__from_bmp
       procedure :: cube_init__from_segment
       procedure :: cube_init__from_segment_list
+      procedure :: cube_add__symbol
       procedure :: cube_add__segment
       procedure :: cube_add__segment_list
       procedure :: cube__erase
@@ -25,7 +26,7 @@ module forgex_cube_m
       procedure :: cube2seg => cube__bmp2seg
       generic :: erase => cube__erase
       generic :: init => cube_init__from_bmp, cube_init__from_segment_list
-      generic :: add => cube_add__segment, cube_add__segment_list
+      generic :: add => cube_add__symbol, cube_add__segment, cube_add__segment_list
    end type cube_t
 
    interface operator(.in.)
@@ -121,6 +122,55 @@ contains
    end subroutine cube__erase
 
 
+   pure subroutine cube_init__from_segment_list(self, seglist)
+      implicit none
+      class(cube_t), intent(inout) :: self
+      type(segment_t), intent(in) :: seglist(:)
+
+      integer :: cp_min, cp_max
+      integer :: siz_list, i, j
+
+      type(segment_t), allocatable :: tmp(:)
+
+      siz_list = size(seglist, dim=1)
+
+      allocate(tmp(siz_list))
+      
+      j = 0
+      do i = 1, siz_list
+         cp_min = seglist(i)%min
+         cp_max = seglist(i)%max
+
+         call self%bmp%add(cp_min, cp_max)
+
+         if (cp_max > BMP_SIZE_BIT) then
+            j = j + 1
+            tmp(j) = segment_t(max(cp_min, BMP_SIZE_BIT), cp_max)
+         end if
+      enddo
+      if (allocated(self%sps)) deallocate(self%sps)
+      allocate(self%sps(j))
+      self%sps(1:j) = tmp(1:j)
+
+   end subroutine cube_init__from_segment_list
+
+
+   pure subroutine cube_add__symbol(self, symbol)
+      implicit none
+      class(cube_t), intent(inout) :: self
+      character(*), intent(in) :: symbol
+
+      integer :: cp
+      cp = ichar_utf8(symbol)
+      if (cp == -1) return ! WARNING: magic nubmer
+
+      if (cp > BMP_SIZE_BIT) then
+         call cube_add__segment(self, segment_t(cp, cp))
+      else
+         call self%bmp%add(cp)
+      end if
+   end subroutine cube_add__symbol
+   
    pure subroutine cube_add__segment(self, segment)
       implicit none
       class(cube_t), intent(inout) :: self
@@ -157,39 +207,6 @@ contains
       end if
 
    end subroutine cube_add__segment
-
-
-   pure subroutine cube_init__from_segment_list(self, seglist)
-      implicit none
-      class(cube_t), intent(inout) :: self
-      type(segment_t), intent(in) :: seglist(:)
-
-      integer :: cp_min, cp_max
-      integer :: siz_list, i, j
-
-      type(segment_t), allocatable :: tmp(:)
-
-      siz_list = size(seglist, dim=1)
-
-      allocate(tmp(siz_list))
-      
-      j = 0
-      do i = 1, siz_list
-         cp_min = seglist(i)%min
-         cp_max = seglist(i)%max
-
-         call self%bmp%add(cp_min, cp_max)
-
-         if (cp_max > BMP_SIZE_BIT) then
-            j = j + 1
-            tmp(j) = segment_t(max(cp_min, BMP_SIZE_BIT), cp_max)
-         end if
-      enddo
-      if (allocated(self%sps)) deallocate(self%sps)
-      allocate(self%sps(j))
-      self%sps(1:j) = tmp(1:j)
-
-   end subroutine cube_init__from_segment_list
 
 
    pure subroutine cube_add__segment_list(self, seglist)

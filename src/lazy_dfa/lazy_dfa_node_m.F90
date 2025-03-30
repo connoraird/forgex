@@ -19,13 +19,14 @@ module forgex_lazy_dfa_node_m
          DFA_NOT_INIT_TRAENSITION_TOP, ALLOC_COUNT_INITTIAL
    use :: forgex_segment_m, only: segment_t
    use :: forgex_nfa_state_set_m, only: nfa_state_set_t
+   use :: forgex_cube_m, only: cube_t
    implicit none
    private
 
    public :: copy_dfa_transition
 
    type, public :: dfa_transition_t
-      type(segment_t)       :: c
+      type(cube_t)          :: c
       type(nfa_state_set_t) :: nfa_set
       integer(int32)        :: own_j = DFA_NOT_INIT ! Own index in the list of transitions
       integer(int32)        :: dst   = DFA_NOT_INIT ! The destination node index of DFA graph.
@@ -182,7 +183,7 @@ contains
    ! This function scans all transition of the node and returns true if a
    ! transition containing the given symbol is already registered.
    pure function dfa_state_node__is_registered_transition(self, dst, symbol) result(res)
-      use :: forgex_segment_m, only: symbol_to_segment, operator(.in.)
+      use :: forgex_cube_m, only: operator(.in.)
       implicit none
       class(dfa_state_node_t), intent(in) :: self
       integer, intent(in) :: dst
@@ -195,7 +196,7 @@ contains
       res = .false.
       do j = 1, self%get_tra_top()
          if (self%transition(j)%dst == dst) then
-            if (symbol_to_segment(symbol) .in. self%transition(j)%c) then
+            if (symbol .in. self%transition(j)%c) then
                res = .true.
                return
             end if

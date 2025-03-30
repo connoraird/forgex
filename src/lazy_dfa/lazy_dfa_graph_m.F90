@@ -145,18 +145,19 @@ contains
 
    !> This subroutine construct an new transition object from the arguments,
    !> and invokes the type-bound procedure of `dfa_state_node_t` with it.
-   pure subroutine lazy_dfa__add_transition(self, state_set, src, dst, seg)
-      use :: forgex_segment_m
+   pure subroutine lazy_dfa__add_transition(self, state_set, src, dst, symbol)
+      ! use :: forgex_segment_m
+      use :: forgex_cube_m, only : cube_t
       use :: forgex_nfa_state_set_m
       implicit none
       class(dfa_graph_t),    intent(inout) :: self
       type(nfa_state_set_t), intent(in)    :: state_set
       integer,               intent(in)    :: src, dst
-      type(segment_t),       intent(in)    :: seg
-
+      ! type(segment_t),       intent(in)    :: seg
+      character(*), intent(in) :: symbol
       type(dfa_transition_t) :: tra
 
-      tra%c = seg
+      call tra%c%add(symbol)
       tra%dst = dst
 
       tra%nfa_set = state_set
