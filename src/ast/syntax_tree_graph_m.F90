@@ -47,6 +47,7 @@ module forgex_syntax_tree_graph_m
       procedure :: crlf => tree_graph__make_tree_crlf
       procedure :: shorthand => tree_graph__shorthand
       procedure :: hex2seg => tree_graph__hexadecimal_to_segment
+      procedure :: hex2cp => tree_graph__hexadecimal_to_codepoint
       procedure :: property => tree_graph__unicode_property
       procedure :: times => tree_graph__times
       procedure :: print => print_tree_wrap
@@ -553,7 +554,9 @@ contains
       node = make_tree_node(op_char)
       ! if (.not. allocated(node%c)) allocate(node%c(size(seglist, dim=1)))
 
-      node%c = cube
+      node%c%bmp%b(:) = cube%bmp%b(:)
+      if (allocated(cube%sps)) node%c%sps = cube%sps(:)
+      if (cube%is_flagged_epsilon()) call node%c%flag_epsilon()
 
       call self%register_connector(node, terminal, terminal)
 
@@ -751,6 +754,69 @@ contains
       ! deallocate(seglist)
 
    end subroutine tree_graph__shorthand
+
+
+   pure subroutine tree_graph__hexadecimal_to_codepoint(self, cp)
+      implicit none
+      class(tree_t), intent(inout) :: self
+      integer(int32), intent(inout) :: cp
+
+      character(:), allocatable :: buf, fmt
+      character(6) :: hex_c
+      character(8) :: hex_len_c
+      integer :: i, ios
+      logical :: is_two_digit, is_longer_digit
+
+      buf = ''
+
+      call self%tape%get_token()
+
+      is_longer_digit = self%tape%current_token == tk_lcurlybrace
+      is_two_digit = .not. is_longer_digit
+
+      if (is_longer_digit) call self%tape%get_token()
+
+      buf = self%tape%token_char(1:1) ! First, get the second digit.
+      i = 2
+
+      reader: do while(.true.)
+         if (is_two_digit .and. i >= 3) exit reader
+         call self%tape%get_token()
+
+         if (is_longer_digit .and. self%tape%current_token /= tk_rcurlybrace .and. self%tape%current_token /= tk_char) then
+            self%is_valid = .false.
+            self%code = SYNTAX_ERR_CURLYBRACE_MISSING
+            return
+         end if
+
+         if (self%tape%current_token == tk_rcurlybrace) exit reader
+         buf = buf//self%tape%token_char(1:1)
+         i = i + 1
+      end do reader
+
+      hex_c = trim(adjustl(buf))
+
+      write(hex_len_c, '(i0)', iostat=ios) len_trim(hex_c)
+      if (ios /= 0) then
+         self%code = SYNTAX_ERR_INVALID_HEXADECIMAL
+         return
+      endif
+
+      fmt = '(z'//trim(hex_len_c)//')'
+      read(hex_c, fmt=fmt, iostat=ios) cp
+
+      if (ios /= 0) then
+         self%code = SYNTAX_ERR_INVALID_HEXADECIMAL
+         return
+      end if
+
+      if (.not. (cp .in. SEG_WHOLE)) then
+         self%code = SYNTAX_ERR_UNICODE_EXCEED
+         return
+      end if
+
+   end subroutine tree_graph__hexadecimal_to_codepoint
+
 
    !> This procedure handles a escape sequence with '\x'.
    pure subroutine tree_graph__hexadecimal_to_segment(self, seglist)
@@ -1306,14 +1372,11 @@ contains
 
             call tree(i)%c%cube2seg(segments)
             do k = 1, ubound(segments, dim=1)
-
                if (k /= 1) write(stderr, '(a)', advance='no') ', '
-                  write(stderr, '(a)', advance='no') segments(k)%print()
-                                 
+
+               write(stderr, '(a)', advance='no') trim(segments(k)%print())
             end do
             write(stderr, *) ""
-         else
-            write(stderr, *) " "
          end if
       end do
    end subroutine dump_tree_table
@@ -1454,7 +1517,7 @@ contains
             buf = buf//'<NULL>'//'-"'//char_utf8(segments(j)%max)//'"; '
 
          else if (segments(j)%max == UTF8_CODE_MAX) then
-            buf = buf//'"'//char_utf8(segments(j)%min)//'"-"'//"<U+1FFFFF>"//'; '
+            buf = buf//'"'//char_utf8(segments(j)%min)//'"-"'//"<U+10FFFF>"//'; '
 
          else
             buf = buf//'"'//char_utf8(segments(j)%min)//'"-"'//char_utf8(segments(j)%max)//'"; '

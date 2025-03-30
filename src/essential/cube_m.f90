@@ -269,8 +269,12 @@ contains
       implicit none
       class(cube_t), intent(inout) :: self
       integer :: i
+      integer(int64) :: mask
 
-      do concurrent (i = 0:BMP_SIZE-1)
+      mask = not(shiftl(1_int64, 32) -1)
+      self%bmp%b(0) = iand(not(self%bmp%b(0)), mask)
+
+      do concurrent (i = 1:BMP_SIZE-1)
          self%bmp%b(i) = not(self%bmp%b(i))
       end do
 

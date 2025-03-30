@@ -223,9 +223,6 @@ contains
          ! If the i-th element of current state set is true, process the i-th NFA node.
          if (check_nfa_state(current_set, i)) then
 
-            ! Copy to a temporary variable.
-            ! n_node = self%nfa%graph(i)
-
             if (.not. allocated(self%nfa%graph(i)%forward)) cycle
 
             ! Scan the all transitions belong to the NFA state node.
