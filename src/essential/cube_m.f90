@@ -22,6 +22,7 @@ module forgex_cube_m
 
    type, public :: cube_t
       logical, private :: epsilon_flag = .false.
+      logical :: single_flag = .true.
       type(bmp_t) :: bmp         ! for U+0000 .. U+FFFF BMP
       type(segment_t), allocatable :: sps(:) ! for U+10000 .. U+10FFFF SPs (SIP, SMP, etc.)
    contains
@@ -35,7 +36,6 @@ module forgex_cube_m
       procedure :: print_sps => cube__dump_sps
       procedure :: invert => cube__invert
       procedure :: num => cube__number_of_flagged_bits
-      procedure :: is_single => cube__is_single_flag
       procedure :: first => cube__first_codepoint
       generic :: add => cube_add__symbol, cube_add__segment, cube_add__segment_list, cube_add__cube
    end type cube_t
@@ -69,6 +69,8 @@ contains
       if (.not. allocated(b%sps)) return
       num = ubound(b%sps, dim=1)
       a%sps = b%sps ! implicit reallocation
+
+      a%single_flag = a%num() == 1
 
    end subroutine cube_t__cube_assign
 
@@ -141,6 +143,9 @@ contains
       else
          call self%bmp%add(cp)
       end if
+
+      if (self%single_flag) self%single_flag = self%num() == 1
+
    end subroutine cube_add__symbol
    
    pure subroutine cube_add__segment(self, segment)
@@ -185,6 +190,8 @@ contains
          end if
    
       end if
+
+      if (self%single_flag) self%single_flag = self%num() == 1
 
    end subroutine cube_add__segment
 
@@ -231,25 +238,26 @@ contains
          j = j + 1
       end do
 
-      if (k == 0) return
+      if (k /= 0) then
+         joint: block
+            type(segment_t), allocatable :: cache(:)
+            if (allocated(self%sps)) then
+               p = ubound(self%sps, dim=1)
+               cache(1:p) = self%sps(1:p)
+               deallocate(self%sps)
 
-      joint: block
-         type(segment_t), allocatable :: cache(:)
-         if (allocated(self%sps)) then
-            p = ubound(self%sps, dim=1)
-            cache(1:p) = self%sps(1:p)
-            deallocate(self%sps)
+               allocate(self%sps(1:p+k))
+               self%sps(1:p) = cache(1:p)
+               self%sps(p+1:p+k) = tmp(1:k)
+            else
+               allocate(self%sps(1:k))
+               self%sps(1:k) = tmp(1:k)
+            end if
+      
+         end block joint
+      end if
 
-            allocate(self%sps(1:p+k))
-            self%sps(1:p) = cache(1:p)
-            self%sps(p+1:p+k) = tmp(1:k)
-         else
-            allocate(self%sps(1:k))
-            self%sps(1:k) = tmp(1:k)
-         end if
-   
-      end block joint
-
+      if (self%single_flag) self%single_flag = self%num() == 1
    end subroutine cube_add__segment_list
 
 
@@ -267,6 +275,7 @@ contains
          call cube_add__segment_list(self, cube%sps)
       end if
 
+      if (self%single_flag) self%single_flag = self%num() == 1
    end subroutine cube_add__cube
 
 !=====================================================================!
@@ -290,34 +299,8 @@ contains
          call invert_segment_list(self%sps)
       end if
 
+      self%single_flag = self%num() == 1
    end subroutine cube__invert
-
-
-   pure function cube__is_single_flag (self) result(ret)
-      implicit none
-      class(cube_t), intent(in) :: self
-
-      integer :: i, total_flags
-      logical :: ret
-
-      do i = 0, BMP_SIZE-1
-         if (self%bmp%b(i) /= 0 .and. popcnt(self%bmp%b(i)) > 1) then
-            ret = .false.
-            return
-         end if
-      end do
-
-      do i = 0, BMP_SIZE-1
-         total_flags = total_flags + popcnt(self%bmp%b(i))
-         if (total_flags > 1) then
-            ret = .false.
-            return
-         end if
-      end do
-
-      ret = .true.
-
-   end function cube__is_single_flag
 
 
    pure function cube__number_of_flagged_bits(self) result(ret)

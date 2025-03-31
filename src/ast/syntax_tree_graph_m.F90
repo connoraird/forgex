@@ -153,7 +153,6 @@ contains
          call self%reallocate()
       end if
       node%own_i = top
-
       self%nodes(top) = node
       self%nodes(top)%is_registered = .true.
       self%top = top
@@ -530,31 +529,16 @@ contains
          return
       end if
 
-      ! if (.not. allocated(seglist)) then
-      !    self%code = ALLOCATION_ERR
-      !    self%is_valid = .false.
-      !    return
-      ! end if
-
-      ! if (size(seglist) < 1) then
-      !    self%code = SYNTAX_ERR_THIS_SHOULD_NOT_HAPPEN
-      !    self%is_valid = .false.
-      !    return
-      ! end if
-
       ! the seglist array have been allocated near the L362.
       if (is_inverted) then
          call cube%invert()
       end if
 
-      ! if (.not. allocated(seglist)) then
-      !    error stop "ERROR: `seg_list` is not allocated. This should not happen."
-      ! end if
-
       node = make_tree_node(op_char)
-      ! if (.not. allocated(node%c)) allocate(node%c(size(seglist, dim=1)))
 
+      ! Manually cube_t copy
       node%c%bmp%b(:) = cube%bmp%b(:)
+      node%c%single_flag = cube%single_flag
       if (allocated(cube%sps)) node%c%sps = cube%sps(:)
       if (cube%is_flagged_epsilon()) call node%c%flag_epsilon()
 
