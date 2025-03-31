@@ -18,7 +18,7 @@ module forgex_syntax_tree_node_m
    use :: forgex_parameters_m
    use :: forgex_segment_m, only: segment_t
    use :: forgex_enums_m
-   use :: forgex_cube_m, only: cube_t
+   use :: forgex_cube_m, only: cube_t, white_bmp
    implicit none
    private
 
@@ -37,7 +37,6 @@ module forgex_syntax_tree_node_m
       !! This type is used to construct a concrete syntax tree,
       !! later converted to NFA.
       integer(int32) :: op            = op_not_init
-      ! type(segment_t), allocatable :: c(:)
       type(cube_t)   :: c
       integer(int32) :: left_i        = INVALID_INDEX
       integer(int32) :: right_i       = INVALID_INDEX
@@ -65,8 +64,11 @@ module forgex_syntax_tree_node_m
       procedure :: get_token
    end type
 
+   type(cube_t), parameter :: terminal_c = cube_t(single_flag=.false., bmp=white_bmp)
+
    type(tree_node_t), parameter, public :: terminal = &
       tree_node_t( op=op_not_init,&
+                   c=terminal_c,&
                    left_i=TERMINAL_INDEX, &
                    right_i=TERMINAL_INDEX, &
                    parent_i=INVALID_INDEX, &
