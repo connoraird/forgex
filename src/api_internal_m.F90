@@ -139,7 +139,7 @@ contains
                   symbol = make_replacement_char()
                end if
                
-               d_tra = automaton%move(cur_i, symbol)
+               d_tra = automaton%destination(cur_i, symbol)
                if (d_tra%dst == cur_i) then
                   ci = next_ci
                   cycle
@@ -296,7 +296,7 @@ contains
                symbol = make_replacement_char()
             end if
             
-            d_tra = automaton%move(cur_i, symbol)
+            d_tra = automaton%destination(cur_i, symbol)
             if (d_tra%dst == cur_i) then
                ci = next_ci
                cycle
@@ -317,7 +317,7 @@ contains
                else
                   symbol = make_replacement_char()
                end if
-               d_tra = automaton%move(cur_i, symbol)
+               d_tra = automaton%destination(cur_i, symbol)
                if (d_tra%dst == cur_i) then
                   ci = next_ci
                   cycle

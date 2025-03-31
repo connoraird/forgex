@@ -42,7 +42,6 @@ module forgex_automaton_m
       procedure :: register_state  => automaton__register_state
       procedure :: construct       => automaton__construct_dfa
       procedure :: get_reachable   => automaton__compute_reachable_state
-      procedure :: move            => automaton__move
       procedure :: destination     => automaton__destination
       procedure :: print           => automaton__print_info
       procedure :: print_dfa       => automaton__print_dfa
@@ -253,49 +252,36 @@ contains
    end function automaton__compute_reachable_state
 
 
-   !> This subroutine gets the next DFA nodes index from current index and symbol,
-   !> and stores the result in `next` and `next_set`.
-   pure subroutine automaton__destination(self, curr, symbol, next, next_set)
+   !> This function returns the dfa transition object, that contains the destination index
+   !> and the corresponding set of transitionable NFA state.
+   pure function automaton__destination(self, curr, symbol) result(ret)
+      use :: forgex_lazy_dfa_node_m, only: dfa_transition_t
       implicit none
       class(automaton_t),    intent(in) :: self
       integer(int32),        intent(in) :: curr
       character(*),          intent(in) :: symbol
-      integer(int32),        intent(inout) :: next
-      type(nfa_state_set_t), intent(inout) :: next_set
 
+      type(dfa_transition_t) :: ret
+
+      
       integer :: i
 
       ! Get a set of NFAs for which current state can transition, excluding epsilon-transitions.
-      next_set = self%get_reachable(curr, symbol)
+      ret%nfa_set = self%get_reachable(curr, symbol)
 
       ! Initialize the next value
-      next = DFA_INVALID_INDEX
+      ret%dst = DFA_INVALID_INDEX
 
       ! Scan the entire DFA nodes.
       do concurrent (i = 1:self%dfa%dfa_top-1)
          ! If there is an existing node corresponding to the NFA state set,
          ! return the index of that node.
-         if (equivalent_nfa_state_set(next_set, self%dfa%nodes(i)%nfa_set)) then
-            next = i
+         if (equivalent_nfa_state_set(ret%nfa_set, self%dfa%nodes(i)%nfa_set)) then
+            ret%dst = i
          end if
       end do
 
-   end subroutine automaton__destination
-
-
-   !> This function returns the dfa transition object, that contains the destination index
-   !> and the corresponding set of transitionable NFA state.
-   pure function automaton__move(self, curr, symbol) result(res)
-      use :: forgex_lazy_dfa_node_m, only: dfa_transition_t
-      implicit none
-      class(automaton_t), intent(in) :: self
-      integer(int32),     intent(in) :: curr    ! current index
-      character(*),       intent(in) :: symbol  ! input symbol
-      type(dfa_transition_t)         :: res
-
-      call self%destination(curr, symbol, res%dst, res%nfa_set)
-
-   end function automaton__move
+   end function automaton__destination
 
 
    !> This subroutine gets the destination index of DFA nodes from the current index with given symbol,
