@@ -22,6 +22,7 @@ module forgex_automaton_m
    use :: forgex_nfa_graph_m
    use :: forgex_lazy_dfa_graph_m
    use :: forgex_syntax_tree_graph_m, only: tree_t
+   use :: forgex_cube_m, only: cube_t
    implicit none
    private
 
@@ -208,10 +209,11 @@ contains
       integer                :: i, j, k
 
       ! temporary variables ... to increase the cache hit rate
-      type(nfa_state_node_t) :: n_node       ! This variable simulates a pointer.
-      type(segment_t), allocatable :: segs(:)
-      type(nfa_transition_t)       :: n_tra
-      type(cube_t) :: cube
+      ! type(nfa_state_node_t) :: n_node       ! This variable simulates a pointer.
+      ! type(segment_t), allocatable :: segs(:)
+      ! type(nfa_transition_t)       :: n_tra
+      ! type(cube_t) :: cube
+      integer :: dst
 
       call init_state_set(state_set, self%nfa%top)
 
@@ -228,14 +230,16 @@ contains
             ! Scan the all transitions belong to the NFA state node.
             middle: do j = 1, self%nfa%graph(i)%forward_top
 
+               dst = self%nfa%graph(i)%forward(j)%dst
+
                ! If it has a destination,
-               if (self%nfa%graph(i)%forward(j)%dst /= NFA_NULL_TRANSITION) then
+               if (dst /= NFA_NULL_TRANSITION) then
 
                      ! If the symbol is in the cube on the transition forward(j).
                      if (symbol .in. self%nfa%graph(i)%forward(j)%c) then
       
                         ! Add the index of the NFA state node to `state_set` of type(nfa_state_set_t).
-                        call add_nfa_state(state_set, self%nfa%graph(i)%forward(j)%dst)
+                        call add_nfa_state(state_set, dst)
 
                      end if
 
@@ -268,16 +272,14 @@ contains
       next = DFA_INVALID_INDEX
 
       ! Scan the entire DFA nodes.
-      do i = 1, self%dfa%dfa_top-1
-
+      do concurrent (i = 1:self%dfa%dfa_top-1)
          ! If there is an existing node corresponding to the NFA state set,
          ! return the index of that node.
          if (equivalent_nfa_state_set(next_set, self%dfa%nodes(i)%nfa_set)) then
             next = i
-            return
          end if
-
       end do
+
    end subroutine automaton__destination
 
 
@@ -291,18 +293,8 @@ contains
       character(*),       intent(in) :: symbol  ! input symbol
       type(dfa_transition_t)         :: res
 
-      type(nfa_state_set_t) :: set
-      integer(int32)        :: next
+      call self%destination(curr, symbol, res%dst, res%nfa_set)
 
-
-      call self%destination(curr, symbol, next, set)
-
-      ! Set the value of each component of the returned object.
-      res%dst = next                      ! valid index of DFA node or DFA_INVALID_INDEX
-      res%nfa_set = set
-
-      ! res%c = symbol_to_segment(symbol) ! this component would not be used.
-      ! res%own_j = DFA_INITIAL_INDEX     ! this component would not be used.
    end function automaton__move
 
 
@@ -312,43 +304,39 @@ contains
    !> It calculates the set of NFA states that can be reached from the `current` node for the given `symbol`,
    !> excluding epsilon transitions, and then registers the new DFA state node if it has not already been registered.
    !> Finally, it adds the transition from the `current` node to the `destination` node in the DFA graph.
-   pure subroutine automaton__construct_dfa (self, curr_i, dst_i, symbol)
+   pure subroutine automaton__construct_dfa (self, curr_i, dst_i, symbol, d_tra)
       use :: forgex_lazy_dfa_node_m, only: dfa_transition_t
       implicit none
       class(automaton_t), intent(inout) :: self
       integer(int32),     intent(in)    :: curr_i
       integer(int32),     intent(inout) :: dst_i
       character(*),       intent(in)    :: symbol
+      type(dfa_transition_t), intent(in) :: d_tra
+      type(nfa_state_set_t) :: nfa_set
 
-      type(dfa_transition_t) :: d_tra
       integer(int32) :: prev_i
 
       dst_i = DFA_INVALID_INDEX
       prev_i = curr_i
 
-      ! ε遷移を除いた行き先のstate_setを取得する。
-      ! Get the state set for the destination excluding epsilon-transition.
-      d_tra = self%move(prev_i, symbol)
-
-      ! この実装ではリストのリダクションを計算する必要がない。
-      !! In this implementation with array approach, array reduction is done in the reachable procedure.
+      nfa_set = d_tra%nfa_set
 
       ! ε遷移との和集合を取り、d_tra%nfa_setに格納する。
       ! Combine the state set with epsilon-transitions and store in `d_tra%nfa_set`.
-      call self%nfa%collect_epsilon_transition(d_tra%nfa_set)
+      call self%nfa%collect_epsilon_transition(nfa_set)
 
       ! 空のNFA状態集合の登録を禁止する
-      if (.not. any(d_tra%nfa_set%vec)) then
+      if (.not. any(nfa_set%vec)) then
          dst_i = DFA_INVALID_INDEX
          return
       end if
 
-      dst_i = self%dfa%registered(d_tra%nfa_set)
+      dst_i = self%dfa%registered(nfa_set)
 
       ! まだDFA状態が登録されていない場合は、新しく登録する。
       ! If the destination index is DFA_INVALID_INDEX, register a new DFA node.
       if (dst_i == DFA_INVALID_INDEX) then
-         call self%register_state(d_tra%nfa_set, dst_i)
+         call self%register_state(nfa_set, dst_i)
       end if
 
       ! If the destination index is DFA_INVALID_INDEX, the registration is failed.
@@ -360,7 +348,7 @@ contains
       ! Add a DFA transition from `prev` to `next` for the given `symbol`.
       ! call self%dfa%add_transition(d_tra%nfa_set, prev_i, dst_i,  &
       !        which_segment_symbol_belong(self%all_segments, symbol))
-      call self%dfa%add_transition(d_tra%nfa_set, prev_i, dst_i, symbol)
+      call self%dfa%add_transition(nfa_set, prev_i, dst_i, symbol)
    end subroutine automaton__construct_dfa
 
 
