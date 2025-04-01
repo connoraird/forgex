@@ -259,7 +259,7 @@ contains
          do i = 1, n
             cp_min = seglist(i)%min
             cp_max = seglist(i)%max
-            call self%ascii%add(cp_min, cp_min)
+            call self%ascii%add(cp_min, cp_max)
          end do
          return
       end if

@@ -539,7 +539,7 @@ contains
       ! Manually cube_t copy
       if (.not. cube%switched_to_bmp)then 
          node%c%ascii = cube%ascii
-      else if (cube%switched_to_bmp) then
+      else
          call node%c%switch_bmp()
          node%c%bmp%b(:) = cube%bmp%b(:)
       end if
