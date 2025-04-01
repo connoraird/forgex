@@ -68,8 +68,12 @@ contains
 
       a%switched_to_bmp = b%switched_to_bmp
       a%epsilon_flag = b%epsilon_flag
-      a%bmp%b(:) = b%bmp%b(:)
-      a%ascii%a(:) = b%ascii%a(:)
+      if (b%switched_to_bmp) then
+         call a%switch_bmp()
+         a%bmp%b(:) = b%bmp%b(:)
+      else
+         a%ascii%a(:) = b%ascii%a(:)
+      end if
 
       if (.not. allocated(b%sps)) return
       num = ubound(b%sps, dim=1)
@@ -92,8 +96,12 @@ contains
 
       if (cp < ASCII_SIZE_BIT .and. .not. cube%switched_to_bmp) then
          ret = iand(cube%ascii%a(cp/bits_64), ishft(1_int64, mod(cp, bits_64))) /= 0_int64
-      else if (cp < BMP_SIZE_BIT) then
+
+      else if (cp < BMP_SIZE_BIT .and. cube%switched_to_bmp) then
          ret = iand(cube%bmp%b(cp/bits_64), ishft(1_int64, mod(cp, bits_64))) /= 0_int64
+
+      else if (cp >= ASCII_SIZE_BIT .and. cp < BMP_SIZE_BIT .and. .not. cube%switched_to_bmp) then
+            ret = .false.
       else
          if (allocated(cube%sps)) then
             ret = symbol_to_segment(symbol) .in. cube%sps(:)
@@ -149,7 +157,7 @@ contains
       if (cp < ASCII_SIZE .and. .not. self%switched_to_bmp) then
          call self%ascii%add(cp)
       else if (cp < BMP_SIZE_BIT) then
-         self%switched_to_bmp = .true.
+         call self%switch_bmp()
          call self%bmp%add(cp)
       end if 
 
@@ -249,6 +257,8 @@ contains
       ! If all values of the list is within the range of ASCII, register them to self%ascii and retrun.
       if (upper < ASCII_SIZE_BIT .and. .not. self%switched_to_bmp) then
          do i = 1, n
+            cp_min = seglist(i)%min
+            cp_max = seglist(i)%max
             call self%ascii%add(cp_min, cp_min)
          end do
          return
@@ -346,6 +356,10 @@ contains
       integer :: i
       integer(int64) :: mask
 
+      if (.not. self%switched_to_bmp) then
+         call self%switch_bmp()
+      end if
+
       mask = not(shiftl(1_int64, 32) -1)
       self%bmp%b(0) = iand(not(self%bmp%b(0)), mask)
 
@@ -371,6 +385,11 @@ contains
       integer :: i
       integer :: partial_sum(0:BMP_SIZE-1)
 
+      if (.not. self%switched_to_bmp) then
+         ret = popcnt(self%ascii%a(0)) + popcnt(self%ascii%a(1))
+         return
+      end if
+
       ret = 0
       do concurrent (i = 0:BMP_SIZE-1)
          partial_sum(i) = popcnt(self%bmp%b(i))
@@ -393,6 +412,18 @@ contains
       class(cube_t), intent(in) :: self
 
       integer :: i, num, pos, ret, candi
+
+      if (.not. self%switched_to_bmp) then
+         do i = 0, ASCII_SIZE-1
+            if (self%ascii%a(i) /= 0) then
+               pos = trailz(self%ascii%a(i))
+               ret = i*bits_64+pos
+               return
+            end if
+         end do
+         ret = INVALID_CODE_POINT
+         return
+      end if
 
       do i = 0, BMP_SIZE-1
          if (self%bmp%b(i) /= 0) then
@@ -431,6 +462,11 @@ contains
       integer :: m, n
       
       if (allocated(segments)) deallocate(segments)
+
+      if (.not. self%switched_to_bmp) then
+         call self%ascii%ascii2seg(segments)
+         return
+      end if
 
       call self%bmp%bmp2seg(tmp)
       m = size(tmp, dim=1)

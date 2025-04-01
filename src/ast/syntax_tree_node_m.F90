@@ -64,11 +64,10 @@ module forgex_syntax_tree_node_m
       procedure :: get_token
    end type
 
-   type(cube_t), parameter :: terminal_c = cube_t(single_flag=.false., bmp=white_bmp)
+   type(cube_t), parameter :: terminal_c = cube_t(single_flag=.false.)
 
    type(tree_node_t), parameter, public :: terminal = &
       tree_node_t( op=op_not_init,&
-                   c=terminal_c,&
                    left_i=TERMINAL_INDEX, &
                    right_i=TERMINAL_INDEX, &
                    parent_i=INVALID_INDEX, &

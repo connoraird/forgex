@@ -16,6 +16,7 @@ module forgex_syntax_tree_optimize_m
    use :: forgex_parameters_m, only: INVALID_INDEX, INVALID_CHAR_INDEX
    use :: forgex_segment_m, only: width_of_segment
    use :: forgex_enums_m
+   use :: forgex_cube_m, only: cube_t, assignment(=)
    implicit none
    private
 

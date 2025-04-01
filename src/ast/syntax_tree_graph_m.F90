@@ -537,7 +537,13 @@ contains
       node = make_tree_node(op_char)
 
       ! Manually cube_t copy
-      node%c%bmp%b(:) = cube%bmp%b(:)
+      if (.not. cube%switched_to_bmp)then 
+         node%c%ascii = cube%ascii
+      else if (cube%switched_to_bmp) then
+         call node%c%switch_bmp()
+         node%c%bmp%b(:) = cube%bmp%b(:)
+      end if
+
       node%c%single_flag = cube%single_flag
       if (allocated(cube%sps)) node%c%sps = cube%sps(:)
       if (cube%is_flagged_epsilon()) call node%c%flag_epsilon()
