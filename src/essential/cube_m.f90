@@ -191,6 +191,8 @@ contains
 
       if (cp_max < ASCII_SIZE_BIT .and. .not. self%switched_to_bmp) then
          call self%ascii%add(cp_min, cp_max)
+         if (self%single_flag) self%single_flag = self%num() == 1
+         return
       else
          call self%switch_bmp()
          call self%bmp%add(cp_min, cp_max)
@@ -261,6 +263,7 @@ contains
             cp_max = seglist(i)%max
             call self%ascii%add(cp_min, cp_max)
          end do
+         if (self%single_flag) self%single_flag = self%num() == 1
          return
       end if
 
