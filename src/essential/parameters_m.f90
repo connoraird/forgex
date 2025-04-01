@@ -13,6 +13,8 @@ module forgex_parameters_m
    integer(int32), parameter :: bits_64 = 64
    integer(int32), parameter :: BMP_SIZE_BIT = 65536
    integer(int32), parameter :: BMP_SIZE = BMP_SIZE_BIT / bits_64 ! BMP (U+0000 .. U+FFFF)
+   integer(int32), parameter :: ASCII_SIZE_BIT = 128
+   integer(int32), parameter :: ASCII_SIZE = ASCII_SIZE_BIT / bits_64
 
    !> This constant defines the unit for adding nodes in the abstract syntax tree (AST).
    !> If it's too large it will cause a stack overflow.
@@ -147,7 +149,7 @@ module forgex_parameters_m
    integer(int32), parameter, public :: DFA_TRANSITION_BASE = 1
 
    !> This constant defines the unit of additional allocation for DFA transitions.
-   integer(int32), parameter, public :: DFA_TRANSITION_UNIT = 32
+   integer(int32), parameter, public :: DFA_TRANSITION_UNIT = 128
 
    !> This constant is used to represent that the array of DFA transitions
    !> has not yet been initialized.

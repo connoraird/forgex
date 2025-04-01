@@ -11,8 +11,8 @@
 #endif
 module forgex_cube_m
    use, intrinsic :: iso_fortran_env, only: int64, int32
-   use :: forgex_parameters_m, only: BMP_SIZE, BMP_SIZE_BIT, bits_64, INVALID_CODE_POINT, UTF8_CODE_MAX
-   use :: forgex_bitmap_m, only: bmp_t
+   use :: forgex_parameters_m, only: BMP_SIZE, BMP_SIZE_BIT, bits_64, INVALID_CODE_POINT, UTF8_CODE_MAX, ASCII_SIZE, ASCII_SIZE_BIT
+   use :: forgex_bitmap_m, only: bmp_t, ascii_t
    use :: forgex_segment_m, only: segment_t, symbol_to_segment, &
       operator(.in.), SEG_INIT, SEG_EPSILON, operator(==), width_of_segment, invert_segment_list
    use :: forgex_utf8_m, only: ichar_utf8
@@ -23,7 +23,9 @@ module forgex_cube_m
    type, public :: cube_t
       logical, private :: epsilon_flag = .false.
       logical :: single_flag = .true.
-      type(bmp_t) :: bmp         ! for U+0000 .. U+FFFF BMP
+      logical :: switched_to_bmp = .false.
+      type(ascii_t) :: ascii                 ! for  U+0000 .. U+007F ASCII
+      type(bmp_t), allocatable :: bmp        ! for  U+0000 .. U+FFFF BMP
       type(segment_t), allocatable :: sps(:) ! for U+10000 .. U+10FFFF SPs (SIP, SMP, etc.)
    contains
       procedure :: flag_epsilon => cube_flag__epsilon
@@ -32,6 +34,7 @@ module forgex_cube_m
       procedure :: cube_add__segment
       procedure :: cube_add__segment_list
       procedure :: cube_add__cube
+      procedure :: switch_bmp => cube__switch_ascii_to_bmp 
       procedure :: cube2seg => cube__bmp2seg
       procedure :: print_sps => cube__dump_sps
       procedure :: invert => cube__invert
@@ -63,8 +66,10 @@ contains
 
       integer :: num
 
+      a%switched_to_bmp = b%switched_to_bmp
       a%epsilon_flag = b%epsilon_flag
       a%bmp%b(:) = b%bmp%b(:)
+      a%ascii%a(:) = b%ascii%a(:)
 
       if (.not. allocated(b%sps)) return
       num = ubound(b%sps, dim=1)
@@ -85,7 +90,9 @@ contains
 
       cp = ichar_utf8(symbol)
 
-      if (cp <= BMP_SIZE_BIT) then
+      if (cp < ASCII_SIZE_BIT .and. .not. cube%switched_to_bmp) then
+         ret = iand(cube%ascii%a(cp/bits_64), ishft(1_int64, mod(cp, bits_64))) /= 0_int64
+      else if (cp < BMP_SIZE_BIT) then
          ret = iand(cube%bmp%b(cp/bits_64), ishft(1_int64, mod(cp, bits_64))) /= 0_int64
       else
          if (allocated(cube%sps)) then
@@ -104,8 +111,9 @@ contains
       type(cube_t), intent(in) :: cube
       logical :: ret
 
-
-      if (cp <= BMP_SIZE_BIT) then
+      if (cp < ASCII_SIZE_BIT .and. .not. cube%switched_to_bmp) then
+         ret = iand(cube%ascii%a(cp/bits_64), ishft(1_int64, mod(cp, bits_64))) /= 0_int64
+      else if (cp < BMP_SIZE_BIT) then
          ret = iand(cube%bmp%b(cp/bits_64), ishft(1_int64, mod(cp, bits_64))) /= 0_int64
       else
          ret = cp .in. cube%sps(:)
@@ -138,9 +146,17 @@ contains
       cp = ichar_utf8(symbol)
       if (cp == -1) return ! WARNING: magic nubmer
 
+      if (cp < ASCII_SIZE .and. .not. self%switched_to_bmp) then
+         call self%ascii%add(cp)
+      else if (cp < BMP_SIZE_BIT) then
+         self%switched_to_bmp = .true.
+         call self%bmp%add(cp)
+      end if 
+
       if (cp > BMP_SIZE_BIT) then
          call cube_add__segment(self, segment_t(cp, cp))
       else
+         call self%switch_bmp()
          call self%bmp%add(cp)
       end if
 
@@ -165,7 +181,12 @@ contains
       cp_min = segment%min
       cp_max = segment%max
 
-      call self%bmp%add(cp_min, cp_max)
+      if (cp_max < ASCII_SIZE_BIT .and. .not. self%switched_to_bmp) then
+         call self%ascii%add(cp_min, cp_max)
+      else
+         call self%switch_bmp()
+         call self%bmp%add(cp_min, cp_max)
+      end if
 
       if (cp_max > BMP_SIZE_BIT) then
 
@@ -206,6 +227,7 @@ contains
       type(segment_t), allocatable :: tmp(:), ret(:)
       type(segment_t) :: what_to_add
 
+      integer :: upper
 
       if (allocated(self%sps)) then
          m = size(self%sps)
@@ -218,6 +240,22 @@ contains
          self%epsilon_flag = .true.
       end if
 
+      ! Scan all segments in the list to find max value of them.
+      upper = 0
+      do i = 1, n
+         upper = max(seglist(i)%max, upper)
+      end do
+
+      ! If all values of the list is within the range of ASCII, register them to self%ascii and retrun.
+      if (upper < ASCII_SIZE_BIT .and. .not. self%switched_to_bmp) then
+         do i = 1, n
+            call self%ascii%add(cp_min, cp_min)
+         end do
+         return
+      end if
+
+      if (.not. self%switched_to_bmp) call self%switch_bmp()
+
       siz = m + n
       allocate(tmp(n))
       allocate(ret(siz+1))
@@ -227,7 +265,6 @@ contains
       do while ( j <= n)
          cp_min = seglist(j)%min
          cp_max = seglist(j)%max
-
          call self%bmp%add(cp_min, cp_max)
          if (cp_max > BMP_SIZE_BIT) then
             k = k + 1
@@ -267,6 +304,16 @@ contains
       type(cube_t), intent(in) :: cube
 
       integer :: i
+
+      if (.not. self%switched_to_bmp .and. .not. cube%switched_to_bmp ) then
+         do concurrent (i=0:ASCII_SIZE-1)
+            self%ascii%a(i) = ior(self%ascii%a(i), cube%ascii%a(i))
+         end do
+         return
+      else
+         call self%switch_bmp()
+      end if
+
       do concurrent (i = 0:BMP_SIZE-1)
          self%bmp%b(i) = ior(self%bmp%b(i), cube%bmp%b(i))
       end do
@@ -278,6 +325,19 @@ contains
       if (self%single_flag) self%single_flag = self%num() == 1
    end subroutine cube_add__cube
 
+
+   pure subroutine cube__switch_ascii_to_bmp(self)
+      implicit none
+      class(cube_t), intent(inout) :: self
+      
+      self%switched_to_bmp = .true.
+      if (.not. allocated(self%bmp)) then
+         allocate(self%bmp)
+         self%bmp%b(0:1) = self%ascii%a(0:1)
+      end if
+
+   end subroutine cube__switch_ascii_to_bmp
+   
 !=====================================================================!
 
    pure subroutine cube__invert(self)
