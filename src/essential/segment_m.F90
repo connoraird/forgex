@@ -607,7 +607,7 @@ contains
          else
             cache = '"'//char_utf8(seg%min)//'"'
          end if
-         res = '['//cache//'-'//"<U+1FFFFF>"//']'
+         res = '['//cache//'-'//"<U+10FFFF>"//']'
       else
          if (seg%min == ichar(' ')) then
             cache = "<SPACE>"

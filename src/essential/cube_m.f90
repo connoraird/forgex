@@ -20,10 +20,10 @@ module forgex_cube_m
    private
 
 
-   type, public :: cube_t
+   type, public :: cube_t ! contains all planes (ascii, BMP and SPs) of Unicode.
       logical, private :: epsilon_flag = .false.
       logical :: single_flag = .true.
-      logical :: switched_to_bmp = .false.
+      logical :: is_switched_to_bmp = .false.
       type(ascii_t) :: ascii                 ! for  U+0000 .. U+007F ASCII
       type(bmp_t), allocatable :: bmp        ! for  U+0000 .. U+FFFF BMP
       type(segment_t), allocatable :: sps(:) ! for U+10000 .. U+10FFFF SPs (SIP, SMP, etc.)
@@ -34,7 +34,7 @@ module forgex_cube_m
       procedure :: cube_add__segment
       procedure :: cube_add__segment_list
       procedure :: cube_add__cube
-      procedure :: switch_bmp => cube__switch_ascii_to_bmp 
+      procedure :: switch_bmp => cube__switch_ascii_to_bmp
       procedure :: cube2seg => cube__bmp2seg
       procedure :: print_sps => cube__dump_sps
       procedure :: invert => cube__invert
@@ -66,9 +66,9 @@ contains
 
       integer :: num
 
-      a%switched_to_bmp = b%switched_to_bmp
+      a%is_switched_to_bmp = b%is_switched_to_bmp
       a%epsilon_flag = b%epsilon_flag
-      if (b%switched_to_bmp) then
+      if (b%is_switched_to_bmp) then
          call a%switch_bmp()
          a%bmp%b(:) = b%bmp%b(:)
       else
@@ -83,7 +83,7 @@ contains
 
    end subroutine cube_t__cube_assign
 
-   
+
    pure function cube_t__symbol_in_cube (symbol, cube) result(ret)
       implicit none
       character(*), intent(in) :: symbol
@@ -94,13 +94,13 @@ contains
 
       cp = ichar_utf8(symbol)
 
-      if (cp < ASCII_SIZE_BIT .and. .not. cube%switched_to_bmp) then
+      if (cp < ASCII_SIZE_BIT .and. .not. cube%is_switched_to_bmp) then
          ret = iand(cube%ascii%a(cp/bits_64), ishft(1_int64, mod(cp, bits_64))) /= 0_int64
 
-      else if (cp < BMP_SIZE_BIT .and. cube%switched_to_bmp) then
+      else if (cp < BMP_SIZE_BIT .and. cube%is_switched_to_bmp) then
          ret = iand(cube%bmp%b(cp/bits_64), ishft(1_int64, mod(cp, bits_64))) /= 0_int64
 
-      else if (cp >= ASCII_SIZE_BIT .and. cp < BMP_SIZE_BIT .and. .not. cube%switched_to_bmp) then
+      else if (cp >= ASCII_SIZE_BIT .and. cp < BMP_SIZE_BIT .and. .not. cube%is_switched_to_bmp) then
             ret = .false.
       else
          if (allocated(cube%sps)) then
@@ -111,7 +111,7 @@ contains
       end if
 
    end function cube_t__symbol_in_cube
-   
+
 
    pure function cube_t__codepoint_in_cube (cp, cube) result(ret)
       implicit none
@@ -119,7 +119,7 @@ contains
       type(cube_t), intent(in) :: cube
       logical :: ret
 
-      if (cp < ASCII_SIZE_BIT .and. .not. cube%switched_to_bmp) then
+      if (cp < ASCII_SIZE_BIT .and. .not. cube%is_switched_to_bmp) then
          ret = iand(cube%ascii%a(cp/bits_64), ishft(1_int64, mod(cp, bits_64))) /= 0_int64
       else if (cp < BMP_SIZE_BIT) then
          ret = iand(cube%bmp%b(cp/bits_64), ishft(1_int64, mod(cp, bits_64))) /= 0_int64
@@ -153,25 +153,22 @@ contains
       integer :: cp
       cp = ichar_utf8(symbol)
       if (cp == -1) return ! WARNING: magic nubmer
-
-      if (cp < ASCII_SIZE .and. .not. self%switched_to_bmp) then
+      if (cp < ASCII_SIZE_BIT .and. .not. self%is_switched_to_bmp) then
          call self%ascii%add(cp)
+
       else if (cp < BMP_SIZE_BIT) then
          call self%switch_bmp()
          call self%bmp%add(cp)
-      end if 
 
-      if (cp > BMP_SIZE_BIT) then
-         call cube_add__segment(self, segment_t(cp, cp))
       else
          call self%switch_bmp()
-         call self%bmp%add(cp)
+         call cube_add__segment(self, segment_t(cp, cp))
       end if
 
       if (self%single_flag) self%single_flag = self%num() == 1
 
    end subroutine cube_add__symbol
-   
+
    pure subroutine cube_add__segment(self, segment)
       implicit none
       class(cube_t), intent(inout) :: self
@@ -189,7 +186,7 @@ contains
       cp_min = segment%min
       cp_max = segment%max
 
-      if (cp_max < ASCII_SIZE_BIT .and. .not. self%switched_to_bmp) then
+      if (cp_max < ASCII_SIZE_BIT .and. .not. self%is_switched_to_bmp) then
          call self%ascii%add(cp_min, cp_max)
          if (self%single_flag) self%single_flag = self%num() == 1
          return
@@ -219,7 +216,7 @@ contains
          else
             self%sps = [segment]
          end if
-   
+
       end if
 
       if (self%single_flag) self%single_flag = self%num() == 1
@@ -243,7 +240,7 @@ contains
          m = size(self%sps)
       else
          m = 0
-      end if 
+      end if
       n = size(seglist, dim=1)
 
       if (any(seglist == SEG_EPSILON)) then
@@ -257,7 +254,7 @@ contains
       end do
 
       ! If all values of the list is within the range of ASCII, register them to self%ascii and retrun.
-      if (upper < ASCII_SIZE_BIT .and. .not. self%switched_to_bmp) then
+      if (upper < ASCII_SIZE_BIT .and. .not. self%is_switched_to_bmp) then
          do i = 1, n
             cp_min = seglist(i)%min
             cp_max = seglist(i)%max
@@ -267,7 +264,7 @@ contains
          return
       end if
 
-      if (.not. self%switched_to_bmp) call self%switch_bmp()
+      if (.not. self%is_switched_to_bmp) call self%switch_bmp()
 
       siz = m + n
       allocate(tmp(n))
@@ -303,7 +300,7 @@ contains
                allocate(self%sps(1:k))
                self%sps(1:k) = tmp(1:k)
             end if
-      
+
          end block joint
       end if
 
@@ -318,7 +315,7 @@ contains
 
       integer :: i
 
-      if (.not. self%switched_to_bmp .and. .not. cube%switched_to_bmp ) then
+      if (.not. self%is_switched_to_bmp .and. .not. cube%is_switched_to_bmp ) then
          do concurrent (i=0:ASCII_SIZE-1)
             self%ascii%a(i) = ior(self%ascii%a(i), cube%ascii%a(i))
          end do
@@ -342,15 +339,15 @@ contains
    pure subroutine cube__switch_ascii_to_bmp(self)
       implicit none
       class(cube_t), intent(inout) :: self
-      
-      self%switched_to_bmp = .true.
+
+      self%is_switched_to_bmp = .true.
       if (.not. allocated(self%bmp)) then
          allocate(self%bmp)
          self%bmp%b(0:1) = self%ascii%a(0:1)
       end if
 
    end subroutine cube__switch_ascii_to_bmp
-   
+
 !=====================================================================!
 
    pure subroutine cube__invert(self)
@@ -359,7 +356,7 @@ contains
       integer :: i
       integer(int64) :: mask
 
-      if (.not. self%switched_to_bmp) then
+      if (.not. self%is_switched_to_bmp) then
          call self%switch_bmp()
       end if
 
@@ -388,7 +385,7 @@ contains
       integer :: i
       integer :: partial_sum(0:BMP_SIZE-1)
 
-      if (.not. self%switched_to_bmp) then
+      if (.not. self%is_switched_to_bmp) then
          ret = popcnt(self%ascii%a(0)) + popcnt(self%ascii%a(1))
          return
       end if
@@ -399,7 +396,7 @@ contains
       end do
 
       ret = sum(partial_sum)
-      
+
       if (allocated(self%sps)) then
          do i = 1, size(self%sps)
             ret = ret + width_of_segment(self%sps(i))
@@ -416,7 +413,7 @@ contains
 
       integer :: i, num, pos, ret, candi
 
-      if (.not. self%switched_to_bmp) then
+      if (.not. self%is_switched_to_bmp) then
          do i = 0, ASCII_SIZE-1
             if (self%ascii%a(i) /= 0) then
                pos = trailz(self%ascii%a(i))
@@ -463,20 +460,20 @@ contains
       type(segment_t), allocatable :: tmp(:)
 
       integer :: m, n
-      
+
       if (allocated(segments)) deallocate(segments)
 
-      if (.not. self%switched_to_bmp) then
+      if (.not. self%is_switched_to_bmp) then
          call self%ascii%ascii2seg(segments)
          return
       end if
 
       call self%bmp%bmp2seg(tmp)
       m = size(tmp, dim=1)
-      
+
       if (allocated(self%sps)) then
          n = size(self%sps, dim=1)
-      else 
+      else
          n = 0
       end if
 
@@ -492,7 +489,7 @@ contains
 
    subroutine cube__dump_sps(self)
       class(cube_t), intent(in) :: self
-      
+
       integer :: i
       if (.not. allocated(self%sps)) return
 
@@ -503,4 +500,3 @@ contains
    end subroutine cube__dump_sps
 
 end module forgex_cube_m
-   

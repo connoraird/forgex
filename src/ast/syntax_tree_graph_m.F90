@@ -537,7 +537,7 @@ contains
       node = make_tree_node(op_char)
 
       ! Manually cube_t copy
-      if (.not. cube%switched_to_bmp)then 
+      if (.not. cube%is_switched_to_bmp)then 
          node%c%ascii = cube%ascii
       else
          call node%c%switch_bmp()
