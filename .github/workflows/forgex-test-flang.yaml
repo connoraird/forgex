@@ -55,14 +55,14 @@ jobs:
         ctest -C Release --test-dir build
         fpm clean --all  2>1 > /dev/null
 
-    - name: Forgex test with FPM (Debug profile) and flang-${{ matrix.flang_version }}
-      if: always()
-      run: |
-        fpm test --profile debug --flag "-fno-backslash -cpp -DFAILED" > /dev/null
-        fpm clean --all  2>&1 > /dev/null
+    # - name: Forgex test with FPM (Debug profile) and flang-${{ matrix.flang_version }}
+    #   if: always()
+    #   run: |
+    #     fpm test --profile debug --flag "-fno-backslash -cpp -DFAILED" > /dev/null
+    #     fpm clean --all  2>&1 > /dev/null
 
-    - name: Forgex test with FPM (Release profile) and flang-${{ matrix.flang_version }}
-      if: always()
-      run: |
-        fpm test --profile release --flag "-fno-backslash -cpp -DFAILED" > /dev/null
+    # - name: Forgex test with FPM (Release profile) and flang-${{ matrix.flang_version }}
+    #   if: always()
+    #   run: |
+    #     fpm test --profile release --flag "-fno-backslash -cpp -DFAILED" > /dev/null
     
