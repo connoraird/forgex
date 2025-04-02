@@ -150,9 +150,10 @@ contains
          tmp(k)%min = jb
          tmp(k)%max = (i-1)*bits_64 + (bits_64-1)
       end if
-
-      allocate(segments(k))
-      segments(:) = tmp(1:k)
+      if (k > 0) then
+         allocate(segments(k))
+         segments(1:k) = tmp(1:k)
+      end if
    end subroutine ascii2seg
 
 !=====================================================================!

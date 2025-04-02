@@ -332,7 +332,7 @@ contains
 
             call self%graph(i)%forward(j)%c%cube2seg(seglist)
 
-            if (self%graph(i)%forward(j)%dst > NFA_NULL_TRANSITION) then
+            if (self%graph(i)%forward(j)%dst /= NFA_NULL_TRANSITION .and. allocated(seglist)) then
                do k = 1, size(seglist, dim=1)
                   if (seglist(k) == SEG_INIT) cycle
 

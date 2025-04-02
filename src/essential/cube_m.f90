@@ -51,8 +51,13 @@ module forgex_cube_m
       module procedure :: cube_t__cube_assign
    end interface
 
+   interface operator(==)
+      module procedure :: cube_t__equal
+   end interface
+
    public :: operator(.in.)
    public :: assignment(=)
+   public :: operator(==)
 
    integer :: q
    type(bmp_t), parameter, public :: white_bmp = bmp_t([(0_int64, q=0, BMP_SIZE-1)])
@@ -111,6 +116,50 @@ contains
       end if
 
    end function cube_t__symbol_in_cube
+
+
+   pure function cube_t__equal(a, b) result(ret)
+      use :: forgex_segment_m, only: segment_t, merge_segments, sort_segment_by_min
+      implicit none
+      type(cube_t), intent(in) :: a, b
+
+      type(segment_t), allocatable :: a_sps(:), b_sps(:)
+      logical :: ret, candi
+
+      integer :: i
+
+      ret = .false.
+
+      if (a%is_switched_to_bmp .neqv. b%is_switched_to_bmp) return
+      if (.not. all(a%ascii%a(:) == b%ascii%a(:))) return
+
+      if (allocated(a%bmp) .and. allocated(b%bmp)) then
+         if (any(a%bmp%b(:) /= b%bmp%b(:))) return
+      end if
+
+
+      if (allocated(a%sps) .and. allocated(b%sps)) then
+         a_sps = a%sps
+         b_sps = b%sps
+         call sort_segment_by_min(a_sps)
+         call merge_segments(a_sps)
+         call sort_segment_by_min(b_sps)
+         call merge_segments(b_sps)
+
+         if (size(a_sps, dim=1) == size(b_sps, dim=1)) then
+            candi = .true. 
+            do i = 1, size(a_sps, dim=1)
+               candi = candi .and. a_sps(i) == b_sps(i)
+            end do
+            ret = candi
+            return
+
+         end if
+      end if
+
+      ret = .true.
+
+   end function cube_t__equal
 
 
    pure function cube_t__codepoint_in_cube (cp, cube) result(ret)
@@ -468,8 +517,12 @@ contains
          return
       end if
 
-      call self%bmp%bmp2seg(tmp)
-      m = size(tmp, dim=1)
+      if (allocated(self%bmp)) then
+         call self%bmp%bmp2seg(tmp)
+         m = size(tmp, dim=1)
+      else
+         m = 0
+      end if
 
       if (allocated(self%sps)) then
          n = size(self%sps, dim=1)
@@ -477,12 +530,11 @@ contains
          n = 0
       end if
 
-      allocate(segments(m+n))
-
-      segments(1:m) = tmp(1:m)
-
-      if (n > 0) segments(m+1:m+n) = self%sps(1:n)
-
+      if (m+n > 0) then
+         allocate(segments(m+n))
+         segments(1:m) = tmp(1:m)
+         if (n > 0) segments(m+1:m+n) = self%sps(1:n)
+      end if
 
    end subroutine cube__bmp2seg
 

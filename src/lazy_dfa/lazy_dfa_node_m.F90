@@ -48,7 +48,8 @@ module forgex_lazy_dfa_node_m
       procedure :: increment_tra_top => dfa_state_node__increment_transition_top
       procedure :: add_transition    => dfa_state_node__add_transition
       procedure :: realloc_f         => dfa_state_node__reallocate_transition_forward
-      procedure :: is_registered_tra => dfa_state_node__is_registered_transition
+      procedure :: dfa_state_node__is_registered_transition, dfa_state_node__is_registered_transition_cube
+      generic   :: is_registered_tra => dfa_state_node__is_registered_transition, dfa_state_node__is_registered_transition_cube
    end type dfa_state_node_t
 
 contains
@@ -193,5 +194,31 @@ contains
          end if
       end do
    end function dfa_state_node__is_registered_transition
+
+
+   pure function dfa_state_node__is_registered_transition_cube(self, dst, cube) result(res)
+      use :: forgex_cube_m, only: cube_t, operator(==)
+      implicit none
+      class(dfa_state_node_t), intent(in) :: self
+      integer, intent(in) :: dst
+      type(cube_t), intent(in) :: cube
+
+      logical :: res
+
+      integer :: j
+
+      res = .false.
+      do j = 1, self%get_tra_top()
+         if (self%transition(j)%dst == dst) then
+
+            if (self%transition(j)%c == cube ) then
+               res = .true.
+               return
+            end if
+         end if
+      end do
+      
+   end function dfa_state_node__is_registered_transition_cube
+      
 
 end module forgex_lazy_dfa_node_m

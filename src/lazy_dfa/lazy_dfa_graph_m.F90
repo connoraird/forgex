@@ -30,7 +30,9 @@ module forgex_lazy_dfa_graph_m
    contains
       procedure :: preprocess     => lazy_dfa__preprocess
       procedure :: registered     => lazy_dfa__registered_index
-      procedure :: add_transition => lazy_dfa__add_transition
+      procedure :: lazy_dfa__add_transition
+      procedure :: dense_dfa__add_transition
+      generic   :: add_transition => lazy_dfa__add_transition, dense_dfa__add_transition
       procedure :: reallocate     => lazy_dfa__reallocate
    end type dfa_graph_t
 
@@ -151,5 +153,24 @@ contains
 
    end subroutine lazy_dfa__add_transition
 
+
+   pure subroutine dense_dfa__add_transition(self, state_set, src, dst, cube)
+      use :: forgex_cube_m, only: cube_t, assignment(=)
+      use :: forgex_nfa_state_set_m, only: nfa_state_set_t
+      use :: forgex_segment_m
+      implicit none
+      class(dfa_graph_t), intent(inout) :: self
+      type(nfa_state_set_t), intent(in) :: state_set
+      integer,               intent(in) :: src, dst
+      type(cube_t),          intent(in) :: cube
+
+      type(dfa_transition_t) :: tra
+
+      call tra%c%add(cube)
+
+      tra%dst = dst
+      tra%nfa_set = state_set
+      call self%nodes(src)%add_transition(tra)
+   end subroutine dense_dfa__add_transition
 
 end module forgex_lazy_dfa_graph_m

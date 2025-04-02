@@ -378,11 +378,16 @@ contains
          end if
 
          do j = 1, self%dfa%nodes(i)%get_tra_top()
-            p = self%dfa%nodes(i)%transition(j)
-            call p%c%cube2seg(segments)
-            do k = 1, size(segments)
-               write(uni, '(a, a, i0, 1x)', advance='no') segments(k)%print(), '=>', p%dst
-            end do
+
+            if (allocated(segments)) deallocate(segments)
+            call self%dfa%nodes(i)%transition(j)%c%cube2seg(segments)
+
+            if (allocated(segments)) then
+               do k = 1, size(segments, dim=1)
+                  write(uni, '(a, a, i0, 1x)', advance='no') segments(k)%print(), '=>', self%dfa%nodes(i)%transition(j)%dst
+               end do
+            end if
+
          end do
          write(uni, *) ""
       end do
