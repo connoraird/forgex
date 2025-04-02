@@ -21,7 +21,7 @@ module forgex_cube_m
 
 
    type, public :: cube_t ! contains all planes (ascii, BMP and SPs) of Unicode.
-      logical, private :: epsilon_flag = .false.
+      logical :: epsilon_flag = .false.
       logical :: single_flag = .true.
       logical :: is_switched_to_bmp = .false.
       type(ascii_t) :: ascii                 ! for  U+0000 .. U+007F ASCII

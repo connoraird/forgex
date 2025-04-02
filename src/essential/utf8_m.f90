@@ -363,7 +363,8 @@ contains
       byte(3) = int(ichar(cache(3:3)), kind(byte))
       byte(4) = int(ichar(cache(4:4)), kind(byte))
 
-      select case (iand(byte(1), z'f8'))
+
+      select case (iand(byte(1), -8_int8)) ! -8 = 0xf8
       case (0:127)
          res = byte(1)
       case (-64:-33)
@@ -389,6 +390,7 @@ contains
       case default
          res = -1
       end select
+
       ! return
 
       ! ! Perform bit shifts to determine character's byte-length.
