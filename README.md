@@ -74,7 +74,7 @@ Operation has been confirmed with the following compilers:
 
 - GNU Fortran (`gfortran`) v11.4.0, v12.2.0, v13.2.1
 - Intel Fortran Compiler (`ifx`) 2024.2.1 20240711
-- LLVM Flang (`flang-19`, `flang-20`) v19.1.7, v20.1.0
+- LLVM Flang (`flang-19`, `flang-20`) v19.1.7, v20.1.0 (FPM v0.11.0 cannot build forgex with flang-19,20. Please use CMake instead for now).
 
 Note: Not available for Flang 18 and earlier
 

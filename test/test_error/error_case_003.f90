@@ -36,6 +36,11 @@ program error_case_003
    call runner_error("[xax]", '', SYNTAX_VALID, res)
    call runner_error("[ax]", '', SYNTAX_VALID, res)
 
+   call runner_error("[^\x63]", '', SYNTAX_VALID, res)
+   call runner_error("[^\x{41}-\x{45}]", '', SYNTAX_VALID, res)
+   call runner_error("[\x{30}b-\x39b]", '', SYNTAX_ERR_INVALID_CHARACTER_RANGE, res)
+   call runner_error("[b-\x{65}]", '', SYNTAX_VALID, res)
+
 
 !=====================================================================!
    if (res) then

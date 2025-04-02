@@ -35,6 +35,16 @@ program test_001
    call runner_match('[a-z]{,2}', 'aa', .true.,res)
    call runner_match('[a-z]{,1}', 'a', .true.,res)
 
+   call runner_regex("a{1,7}", "aaaaaaaaa", 'aaaaaaa', res)
+   call runner_regex("a{1,7}", "aaaaaaaa",  'aaaaaaa', res)
+   call runner_regex("a{1,7}", "aaaaaaa",   'aaaaaaa', res)
+   call runner_regex("a{1,7}", "aaaaaa",    'aaaaaa', res)
+   call runner_regex("a{1,7}", "aaaaa",     'aaaaa', res)
+   call runner_regex("a{1,7}", "aaaa",      'aaaa', res)
+   call runner_regex("a{1,7}", "aaa",       'aaa', res)
+   call runner_regex("a{1,7}", "aa",        'aa', res)
+   call runner_regex("a{1,7}", "a",         'a', res)
+   call runner_regex("a{1,7}", "", "", res)
 
    call runner_regex('[a-z]{,7}', 'aaaaaaab', 'aaaaaaa', res)
    call runner_regex('[a-z]{,6}', 'aaaaaaab', 'aaaaaa', res)

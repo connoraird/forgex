@@ -8,6 +8,8 @@ add_library(essential STATIC
    sort_m.f90
    utf8_m.f90
    utility_m.f90
+   cube_m.F90
+   bitmap_m.F90
 )
 
 set_target_properties(essential PROPERTIES

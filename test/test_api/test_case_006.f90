@@ -19,7 +19,7 @@ program test_006
 
 
    call runner_match("\S", "!", .true., res)       ! == char(33)
-   call runner_match("\S", char(31), .true., res)
+   call runner_match("\S", char(31), .false., res) ! Inverted classes do not match ASCII control characters from v5.0
    call runner_match("\S", " ", .false., res)
    call runner_match("\S", "a", .true., res)
    call runner_match("\S", "A", .true., res)
